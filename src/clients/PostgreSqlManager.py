@@ -32,6 +32,23 @@ class PostgreSqlManager:
         return conn
 
 
+    def execute_query(
+        self,
+        query: str,
+        params: tuple | None = None
+    ) -> pd.DataFrame:
+        """
+        Executes a SQL query and returns the result as a pandas DataFrame.
+        """
+        conn = self.connect_to_db()
+
+        try:
+            df = pd.read_sql_query(query, conn, params=params)
+            return df
+        finally:
+            conn.close()
+            
+
     def insert_data_into_table(
         self, 
         df: pd.DataFrame, 

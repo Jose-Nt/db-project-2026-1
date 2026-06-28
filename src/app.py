@@ -1,11 +1,15 @@
-from dotenv import load_dotenv
+'''from services.setup import setup_enviroment
 import streamlit as st
-import os
+from clients.PostgreSqlManager import PostgreSqlManager
 
-try:
-    env_path = os.path.join(os.getcwd(), "src", "config", ".env")
-    load_dotenv(dotenv_path=env_path)
-except:
-    pass
+setup_enviroment()
 
-st.switch_page("pages/login.py")
+pg_manager = PostgreSqlManager()
+df = pg_manager.execute_query("SELECT * FROM local")
+st.dataframe(df)
+
+#st.switch_page("pages/login.py")'''
+
+from src.services.utils import setup_enviroment
+
+print(1+1)

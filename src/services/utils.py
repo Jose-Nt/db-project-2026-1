@@ -19,8 +19,8 @@ def page_setup(
     Setup the initial config for each page.
     """
     st.set_page_config(
-        page_title="Brand Lift Calculator | BR Media",
-        page_icon="src/images/page-icon.png",
+        page_title="UniEvents",
+        page_icon="src/images/page-icon.jpg",
         layout="wide",
         initial_sidebar_state="collapsed"
     )

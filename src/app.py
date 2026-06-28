@@ -1,15 +1,9 @@
-'''from services.setup import setup_enviroment
 import streamlit as st
-from clients.PostgreSqlManager import PostgreSqlManager
+from services.utils import setup_enviroment
 
 setup_enviroment()
 
-pg_manager = PostgreSqlManager()
-df = pg_manager.execute_query("SELECT * FROM local")
-st.dataframe(df)
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-#st.switch_page("pages/login.py")'''
-
-from src.services.utils import setup_enviroment
-
-print(1+1)
+st.switch_page("pages/home.py" if st.session_state.logged_in else "pages/login.py")

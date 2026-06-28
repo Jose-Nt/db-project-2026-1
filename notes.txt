@@ -1,0 +1,6 @@
+EXECUTAR NO BASH:
+docker compose down -v
+docker compose up --build
+
+ACESSAR:
+http://localhost:8501/

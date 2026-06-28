@@ -13,7 +13,7 @@ def setup_enviroment(
 
 
 def page_setup(
-        page_name : str
+        page_name : str | None = None
     ) -> None:
     """
     Setup the initial config for each page.
@@ -25,5 +25,6 @@ def page_setup(
         initial_sidebar_state="collapsed"
     )
 
-    with open(f"src/styles/{page_name}.css", encoding="utf-8") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    if page_name:
+        with open(f"src/styles/{page_name}.css", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)

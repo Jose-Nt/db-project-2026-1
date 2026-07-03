@@ -177,10 +177,12 @@ INSERT INTO tipo_usuario (nome) VALUES
 -- INSERTS FOR DEMONSTRATION
 -- ==========================================
 
+-- Inserir usuários de exemplo
 INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha) VALUES
 ('11111111111', 1, 1, 'Joao Aluno Teste', '2000-01-01', 'senha123'),
 ('22222222222', 3, 2, 'Maria Servidora Teste', '1985-05-10', 'senha456');
 
+-- Inserir endereços de exemplo
 INSERT INTO endereco (referencia, latitude, longitude) VALUES
 ('Perto do ICC Norte', -15.7630, -47.8710),
 ('Em frente a BCE', -15.7615, -47.8725),
@@ -188,6 +190,7 @@ INSERT INTO endereco (referencia, latitude, longitude) VALUES
 ('Na grama da FAU', -15.7600, -47.8690),
 ('No Patinódromo', -15.7670, -47.8700);
 
+-- Inserir locais de exemplo (o nome do local será o mesmo do título do evento)
 INSERT INTO local (idendereco, nome) VALUES
 (1, 'Revisão de Cálculo I'),
 (2, 'Palestra sobre IA'),
@@ -195,17 +198,50 @@ INSERT INTO local (idendereco, nome) VALUES
 (4, 'Happy Hour da Prograd'),
 (5, 'Grupo de Estudos de BD');
 
+-- Inserir eventos de exemplo
+-- Evento 1: Criado por Joao Aluno Teste
 INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
 ('11111111111', 1, 1, 8, 'Revisão de Cálculo I', CURRENT_DATE, '14:00:00', 'Grupo para revisar a matéria para a P1 de Cálculo I.');
-
+-- Evento 2: Criado por Maria Servidora Teste
 INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
 ('22222222222', 2, 4, 2, 'Palestra sobre IA', CURRENT_DATE, '10:00:00', 'Palestra com especialista sobre o futuro da Inteligência Artificial.');
-
+-- Evento 3: Criado por Joao Aluno Teste
 INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
 ('11111111111', 3, 1, 6, 'Futsal Semanal', CURRENT_DATE + 1, '17:00:00', 'Futsal aberto para todos os níveis, venha jogar!');
-
+-- Evento 4: Criado por Maria Servidora Teste
 INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
 ('22222222222', 4, 2, 1, 'Happy Hour da Prograd', CURRENT_DATE + 2, '18:00:00', 'Confraternização dos servidores da Prograd.');
-
+-- Evento 5: Criado por Joao Aluno Teste
 INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
 ('11111111111', 5, 1, 8, 'Grupo de Estudos de BD', CURRENT_DATE, '16:00:00', 'Vamos nos juntar para estudar para o projeto de Banco de Dados.');
+
+-- ==========================================
+-- PROCEDURES / FUNCTIONS
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION create_full_event(
+    p_titulo VARCHAR,
+    p_descricao VARCHAR,
+    p_referencia VARCHAR,
+    p_latitude FLOAT,
+    p_longitude FLOAT,
+    p_horario TIME,
+    p_data DATE,
+    p_id_usuario CHAR(11),
+    p_id_publico_alvo INT,
+    p_id_categoria INT
+) RETURNS VOID LANGUAGE plpgsql AS $$
+DECLARE
+    v_id_endereco INT;
+    v_id_local INT;
+BEGIN
+    INSERT INTO endereco (referencia, latitude, longitude)
+    VALUES (p_referencia, p_latitude, p_longitude) RETURNING id_endereco INTO v_id_endereco;
+
+    INSERT INTO local (idendereco, nome)
+    VALUES (v_id_endereco, p_titulo) RETURNING id_local INTO v_id_local;
+
+    INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao)
+    VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao);
+END;
+$$;

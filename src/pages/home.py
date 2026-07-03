@@ -4,6 +4,7 @@ from streamlit_folium import st_folium
 from datetime import datetime
 import streamlit as st
 import pandas as pd
+import psycopg2
 import folium
 
 
@@ -21,7 +22,7 @@ st.markdown("### Mapa de Eventos - Campus Darcy Ribeiro (UnB)")
 db_manager = PostgreSqlManager()
 
 @st.cache_data(ttl=30)
-def fetch_eventos_from_db():
+def fetch_eventos_from_db(filter_date):
     """Busca e formata os eventos do banco de dados."""
     query = """
         SELECT
@@ -35,10 +36,11 @@ def fetch_eventos_from_db():
         FROM evento e
         JOIN categoria c ON e.idcategoria = c.id_categoria
         JOIN local l ON e.idlocal = l.id_local
-        JOIN endereco en ON l.idendereco = en.id_endereco;
+        JOIN endereco en ON l.idendereco = en.id_endereco
+        WHERE e.data = %s;
     """
     try:
-        eventos_df = db_manager.execute_query(query)
+        eventos_df = db_manager.execute_query(query, params=(filter_date,))
         return eventos_df.to_dict('records')
     except Exception as e:
         st.error(f"Erro ao buscar eventos: {e}")
@@ -102,11 +104,18 @@ def show_event_dialog(event_details, event_id):
                 }])
                 db_manager.insert_data_into_table(participacao_df, "participacao")
                 st.success(f"Presença confirmada em '{event_details['titulo']}'!")
-                st.cache_data.clear()
-        except Exception as e:
+                st.cache_data.clear() # Limpa o cache para forçar a releitura dos dados
+        except psycopg2.Error as e:
             st.error(f"Erro ao registrar participação: {e}")
 
-eventos = fetch_eventos_from_db()
+# Adiciona o filtro de data
+selected_date = st.date_input(
+    "Filtrar eventos por data",
+    value=datetime.now().date(),
+    key="date_filter"
+)
+
+eventos = fetch_eventos_from_db(selected_date)
 categorias_df, publicos_df = fetch_form_data()
 
 # Linha de Métricas Superiores
@@ -190,46 +199,38 @@ with col_acoes:
             novo_titulo = st.text_input("Nome do Evento", placeholder="Ex: Grupo de Estudos de BD")
             nova_desc = st.text_area("Descrição", placeholder="Detalhes sobre o evento...")
             nova_referencia = st.text_input("Ponto de Referência", placeholder="Ex: Em frente à entrada da BCE")
-            novo_horario = st.time_input("Horário do Evento")
+            
+            col_data, col_hora = st.columns(2)
+            with col_data:
+                nova_data = st.date_input("Data do Evento", min_value=datetime.now().date())
+            with col_hora:
+                novo_horario = st.time_input("Horário do Evento")
+
             nova_cat_nome = st.selectbox("Categoria", options=categorias_map.keys())
             novo_publico_nome = st.selectbox("Público-Alvo", options=publicos_map.keys())
 
             botao_salvar = st.form_submit_button("Publicar no Campus", use_container_width=True)
 
-            if botao_salvar and all([novo_titulo, nova_desc, nova_referencia, novo_horario, nova_cat_nome, novo_publico_nome]):
+            if botao_salvar and all([novo_titulo, nova_desc, nova_referencia, nova_data, novo_horario, nova_cat_nome, novo_publico_nome]):
                 try:
-                    # 1. Inserir endereço e obter o ID
-                    endereco_df = pd.DataFrame([{
-                        "referencia": nova_referencia,
-                        "latitude": coordenadas_clicadas['lat'],
-                        "longitude": coordenadas_clicadas['lng']
-                    }])
-                    db_manager.insert_data_into_table(endereco_df, "endereco")
-                    id_endereco = db_manager.execute_query("SELECT MAX(id_endereco) as id FROM endereco").iloc[0]['id']
-
-                    # 2. Inserir local e obter o ID
-                    local_df = pd.DataFrame([{"idendereco": id_endereco, "nome": novo_titulo}])
-                    db_manager.insert_data_into_table(local_df, "local")
-                    id_local = db_manager.execute_query("SELECT MAX(id_local) as id FROM local").iloc[0]['id']
-
-                    # 3. Inserir o evento
-                    evento_df = pd.DataFrame([{
-                        "idusuario": user_info['cpf'],
-                        "idlocal": id_local,
-                        "idpublico_alvo": publicos_map[novo_publico_nome],
-                        "idcategoria": categorias_map[nova_cat_nome],
-                        "titulo": novo_titulo,
-                        "data": datetime.now().date(),
-                        "horario": novo_horario,
-                        "descricao": nova_desc
-                    }])
-                    db_manager.insert_data_into_table(evento_df, "evento")
+                    params = [
+                        novo_titulo,
+                        nova_desc,
+                        nova_referencia,
+                        coordenadas_clicadas['lat'],
+                        coordenadas_clicadas['lng'],
+                        novo_horario,
+                        nova_data,
+                        user_info['cpf'],
+                        publicos_map[novo_publico_nome],
+                        categorias_map[nova_cat_nome]
+                    ]
+                    db_manager.call_procedure('create_full_event', params)
 
                     st.success("Evento criado com sucesso! O mapa será atualizado.")
                     st.cache_data.clear() # Limpa o cache para forçar a releitura dos dados
                     st.rerun()
-
-                except Exception as e:
+                except psycopg2.Error as e:
                     st.error(f"Ocorreu um erro ao criar o evento: {e}")
             elif botao_salvar:
                 st.warning("Por favor, preencha todos os campos do evento.")

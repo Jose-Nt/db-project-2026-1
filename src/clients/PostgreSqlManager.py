@@ -79,6 +79,25 @@ class PostgreSqlManager:
         cursor.close()
         conn.close()
 
+
+    def call_procedure(
+        self,
+        proc_name: str,
+        params: list | None = None
+    ) -> None:
+        """
+        Calls a PostgreSQL stored procedure/function.
+        """
+        conn = self.connect_to_db()
+        cursor = conn.cursor()
+
+        try:
+            cursor.callproc(proc_name, params)
+            conn.commit()
+        finally:
+            cursor.close()
+            conn.close()
+
     
     def delete_rows_by_condition(
         self,

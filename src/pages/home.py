@@ -283,9 +283,12 @@ elif st.session_state.view_mode == "perfil":
             
             try:
                 db_manager.update_table("usuario", update_data, "cpf = %s", (user_info['cpf'],))
-                st.success("Perfil atualizado com sucesso!")
-                # Atualiza o session_state para refletir as mudanças imediatamente
-                st.session_state.user_info.update(update_data)
-                st.rerun()
+                st.success("Perfil atualizado com sucesso! Você será redirecionado para a página de login.")
+                
+                # Limpa a sessão e redireciona para o login
+                st.session_state.logged_in = False
+                del st.session_state.user_info
+                st.switch_page("pages/login.py")
+
             except psycopg2.Error as e:
                 st.error(f"Ocorreu um erro ao atualizar o perfil: {e}")

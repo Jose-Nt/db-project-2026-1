@@ -1,6 +1,6 @@
 from clients.PostgreSqlManager import PostgreSqlManager
-from services.utils import page_setup
 from streamlit_folium import st_folium
+from services.utils import page_setup
 from datetime import datetime
 import streamlit as st
 import pandas as pd
@@ -125,7 +125,7 @@ def show_event_dialog(event_details, event_id):
 
 # Adiciona o filtro de data
 selected_date = st.date_input(
-    "Filtrar eventos por data",
+    "Data dos eventos",
     value=datetime.now().date(),
     key="date_filter"
 )
@@ -136,13 +136,11 @@ categorias_df, publicos_df = fetch_form_data()
 # --- Renderização Condicional da Página ---
 
 if st.session_state.view_mode == "mapa":
-    st.header("Mapa de Eventos")
 
-    # Coordenadas centrais da UnB (Darcy Ribeiro)
     UNB_LAT, UNB_LON = -15.7635, -47.8708
 
     # --- Renderização do Mapa ---
-    st.subheader("📍 Explore ou Clique no Mapa para Criar um Evento")
+    st.write("📍 Explore ou Clique no Mapa para Criar um Evento")
 
     m = folium.Map(
         location=[UNB_LAT, UNB_LON], zoom_start=15, min_zoom=14, max_zoom=18,
@@ -202,7 +200,7 @@ if st.session_state.view_mode == "mapa":
                 else: st.warning("Por favor, preencha todos os campos do evento.")
     else:
         st.subheader("ℹ️ Como funciona?")
-        st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Use o botão **'Lista'** na barra lateral para ver os detalhes e participar.")
+        st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no íncone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
 
 elif st.session_state.view_mode == "lista":
     st.header("Lista de Eventos")

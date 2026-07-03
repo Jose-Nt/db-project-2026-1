@@ -1,3 +1,7 @@
+.block-container {
+    padding-top: 0.5rem;
+}
+
 /* Estilo customizado para todos os botões */
 .stButton>button {
     background-color: #FF4D8D;

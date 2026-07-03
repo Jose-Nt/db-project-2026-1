@@ -253,23 +253,8 @@ for ev in eventos:
     with col_info:
         st.markdown(f"**{ev['titulo']}** | 🏷️ *{ev['categoria']}* — `{ev['participantes'] + 1} participantes`")
     with col_btn:
-        if st.button("Participar", key=f"btn_part_{ev['id_evento']}", use_container_width=True):
-            try:
-                # Verifica se o usuário já participa
-                check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
-                already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], ev['id_evento'])).empty
-
-                if already_participating:
-                    st.warning(f"Você já está participando de '{ev['titulo']}'.")
-                else:
-                    participacao_df = pd.DataFrame([{
-                        "idusuario": user_info['cpf'],
-                        "idevento": ev['id_evento'],
-                        "data_inscricao": datetime.now().date()
-                    }])
-                    db_manager.insert_data_into_table(participacao_df, "participacao")
-                    st.success(f"Presença confirmada em '{ev['titulo']}'!")
-                    st.cache_data.clear()
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao registrar participação: {e}")
+        # O botão agora abre o diálogo de detalhes, unificando a experiência.
+        if st.button("Detalhes", key=f"btn_details_{ev['id_evento']}", use_container_width=True):
+            event_details = fetch_event_details(ev['id_evento'])
+            if event_details:
+                show_event_dialog(event_details, ev['id_evento'])

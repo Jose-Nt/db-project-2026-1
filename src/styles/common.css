@@ -1,0 +1,19 @@
+/* Oculta elementos padrão do Streamlit para uma interface mais limpa */
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+#MainMenu {
+    visibility: hidden;
+}
+footer {
+    visibility: hidden;
+}
+header {
+    visibility: hidden;
+}
+[data-testid="stToolbar"] {
+    display: none !important;
+}
+[data-testid="stHeader"] {
+    display: none !important;
+}

@@ -1,0 +1,11 @@
+/* Estilo customizado para todos os botões */
+.stButton>button {
+    background-color: #FF4D8D;
+    color: white;
+    border: 2px solid #FF4D8D;
+}
+.stButton>button:hover {
+    background-color: white;
+    color: #FF4D8D;
+    border: 2px solid #FF4D8D;
+}

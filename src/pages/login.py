@@ -6,7 +6,7 @@ import pandas as pd
 import psycopg2
 
 
-page_setup()
+page_setup(page_name="login")
 
 if st.session_state.get("logged_in", False):
     st.switch_page("pages/home.py")

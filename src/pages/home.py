@@ -29,9 +29,8 @@ with st.sidebar:
         st.session_state.view_mode = "mapa"
     if st.button("Lista de eventos", use_container_width=True):
         st.session_state.view_mode = "lista"
-
-# Título da página é definido fora para ser comum a ambas as visualizações
-st.title("UniEvents - Darcy Ribeiro")
+    if st.button("Perfil", use_container_width=True):
+        st.session_state.view_mode = "perfil"
 
 # --- Lógica de Banco de Dados ---
 db_manager = PostgreSqlManager()
@@ -67,10 +66,12 @@ def fetch_form_data():
     try:
         categorias_df = db_manager.execute_query("SELECT id_categoria, nome FROM categoria")
         publicos_df = db_manager.execute_query("SELECT id_publico, nome FROM publico_alvo")
-        return categorias_df, publicos_df
+        departamentos_df = db_manager.execute_query("SELECT id_departamento, nome FROM departamento")
+        tipos_usuario_df = db_manager.execute_query("SELECT id_tipo_usuario, nome FROM tipo_usuario")
+        return categorias_df, publicos_df, departamentos_df, tipos_usuario_df
     except Exception as e:
         st.error(f"Erro ao carregar dados do formulário: {e}")
-        return pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 @st.cache_data(ttl=30)
 def fetch_event_details(event_id):
@@ -123,19 +124,20 @@ def show_event_dialog(event_details, event_id):
         except psycopg2.Error as e:
             st.error(f"Erro ao registrar participação: {e}")
 
-# Adiciona o filtro de data
-selected_date = st.date_input(
-    "Data dos eventos",
-    value=datetime.now().date(),
-    key="date_filter"
-)
-
-eventos = fetch_eventos_from_db(selected_date)
-categorias_df, publicos_df = fetch_form_data()
+# Busca os dados que podem ser usados em múltiplas visualizações (mapa, perfil)
+categorias_df, publicos_df, departamentos_df, tipos_usuario_df = fetch_form_data()
 
 # --- Renderização Condicional da Página ---
 
 if st.session_state.view_mode == "mapa":
+    st.title("UniEvents - Darcy Ribeiro")
+
+    selected_date = st.date_input(
+        "Data dos eventos",
+        value=datetime.now().date(),
+        key="date_filter_map"
+    )
+    eventos = fetch_eventos_from_db(selected_date)
 
     UNB_LAT, UNB_LON = -15.7635, -47.8708
 
@@ -203,10 +205,18 @@ if st.session_state.view_mode == "mapa":
         st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no íncone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
 
 elif st.session_state.view_mode == "lista":
-    st.header("Lista de Eventos")
+    st.title("UniEvents - Darcy Ribeiro")
+
+    selected_date = st.date_input(
+        "Data dos eventos",
+        value=datetime.now().date(),
+        key="date_filter_list"
+    )
+    eventos = fetch_eventos_from_db(selected_date)
+
     st.divider()
 
-    if not eventos:
+    if not eventos: 
         st.info("Nenhum evento ativo para esta data. Que tal criar o primeiro no mapa?")
 
     for ev in eventos:
@@ -218,3 +228,64 @@ elif st.session_state.view_mode == "lista":
                 event_details = fetch_event_details(ev['id_evento'])
                 if event_details:
                     show_event_dialog(event_details, ev['id_evento'])
+
+elif st.session_state.view_mode == "perfil":
+    st.header("Meu Perfil")
+
+    user_info = st.session_state.get("user_info", {})
+    departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
+    tipos_usuario_map = {row['nome']: row['id_tipo_usuario'] for _, row in tipos_usuario_df.iterrows()}
+    
+    # Inverte os mapas para encontrar o nome a partir do ID
+    id_to_departamento = {v: k for k, v in departamentos_map.items()}
+    id_to_tipo_usuario = {v: k for k, v in tipos_usuario_map.items()}
+
+    st.divider()
+    with st.form("form_update_profile"):
+        st.subheader("Suas Informações")
+
+        # Campos não editáveis
+        st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
+        st.date_input("Data de Nascimento", value=user_info.get('data_nasc'), disabled=True)
+
+        # Campos editáveis
+        nome = st.text_input("Nome Completo", value=user_info.get('nome'))
+        
+        dep_atual_nome = id_to_departamento.get(user_info.get('iddepartamento'))
+        dep_selecionado_nome = st.selectbox("Departamento", options=departamentos_map.keys(), index=list(departamentos_map.keys()).index(dep_atual_nome) if dep_atual_nome in departamentos_map else 0)
+
+        tipo_atual_nome = id_to_tipo_usuario.get(user_info.get('idtipo_usuario'))
+        tipo_selecionado_nome = st.selectbox("Tipo de Usuário", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
+
+        st.subheader("Alterar Senha")
+        nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
+        confirma_nova_senha = st.text_input("Confirme a Nova Senha", type="password")
+
+        botao_salvar = st.form_submit_button("Salvar Alterações", use_container_width=True)
+
+        if botao_salvar:
+            update_data = {
+                "nome": nome,
+                "iddepartamento": departamentos_map[dep_selecionado_nome],
+                "idtipo_usuario": tipos_usuario_map[tipo_selecionado_nome]
+            }
+
+            if nova_senha:
+                if nova_senha == confirma_nova_senha:
+                    if len(nova_senha) >= 6:
+                        update_data["senha"] = nova_senha
+                    else:
+                        st.error("A nova senha deve ter no mínimo 6 caracteres.")
+                        st.stop()
+                else:
+                    st.error("As novas senhas não coincidem.")
+                    st.stop()
+            
+            try:
+                db_manager.update_table("usuario", update_data, "cpf = %s", (user_info['cpf'],))
+                st.success("Perfil atualizado com sucesso!")
+                # Atualiza o session_state para refletir as mudanças imediatamente
+                st.session_state.user_info.update(update_data)
+                st.rerun()
+            except psycopg2.Error as e:
+                st.error(f"Ocorreu um erro ao atualizar o perfil: {e}")

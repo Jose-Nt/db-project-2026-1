@@ -80,6 +80,34 @@ class PostgreSqlManager:
         conn.close()
 
 
+    def update_table(
+        self,
+        table_name: str,
+        update_data: dict,
+        condition: str,
+        condition_params: tuple
+    ) -> None:
+        """
+        Updates records in a table based on a condition.
+        """
+        conn = self.connect_to_db()
+        cursor = conn.cursor()
+
+        set_clause = sql.SQL(', ').join(
+            sql.SQL("{} = %s").format(sql.Identifier(k)) for k in update_data.keys()
+        )
+        
+        query = sql.SQL("UPDATE {table} SET {set_clause} WHERE {condition}").format(
+            table=sql.Identifier(table_name),
+            set_clause=set_clause,
+            condition=sql.SQL(condition)
+        )
+        
+        cursor.execute(query, list(update_data.values()) + list(condition_params))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
     def call_procedure(
         self,
         proc_name: str,

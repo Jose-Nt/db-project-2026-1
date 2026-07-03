@@ -3,6 +3,7 @@ from services.utils import page_setup
 from datetime import date
 import streamlit as st
 import pandas as pd
+import psycopg2
 
 
 page_setup()
@@ -38,8 +39,8 @@ with login_tab:
                         st.switch_page("pages/home.py")
                     else:
                         st.error("CPF ou senha inválidos. Por favor, verifique ou registre-se.")
-                except Exception as e:
-                    st.error(f"Ocorreu um erro durante o login: {e}")
+                except psycopg2.Error as e:
+                    st.error(f"Ocorreu um erro de banco de dados durante o login: {e}")
 
 with register_tab:
     with st.form("register_form"):
@@ -91,9 +92,9 @@ with register_tab:
                         new_user_df = pd.DataFrame(new_user_data)
                         try:
                             db_manager.insert_data_into_table(new_user_df, "usuario")
-                            st.success("Usuário registrado com sucesso! Agora você pode fazer o login.")
-                        except Exception as e:
-                            st.error(f"Ocorreu um erro durante o registro: {e}")
+                            st.success("Usuário registrado com sucesso! Vá para a aba 'Login' para entrar.")
+                        except psycopg2.Error as e:
+                            st.error(f"Ocorreu um erro de banco de dados durante o registro: {e}")
         
-        except Exception as e:
-            st.error(f"Não foi possível carregar os dados para o formulário de registro: {e}")
+        except psycopg2.Error as e:
+            st.error(f"Não foi possível carregar os dados para o formulário: {e}")

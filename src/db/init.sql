@@ -173,28 +173,39 @@ INSERT INTO tipo_usuario (nome) VALUES
 ('Servidor'),
 ('Comunidade externa');
 
+-- ==========================================
+-- INSERTS FOR DEMONSTRATION
+-- ==========================================
+
+INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha) VALUES
+('11111111111', 1, 1, 'Joao Aluno Teste', '2000-01-01', 'senha123'),
+('22222222222', 3, 2, 'Maria Servidora Teste', '1985-05-10', 'senha456');
+
 INSERT INTO endereco (referencia, latitude, longitude) VALUES
-('A definir', -15.7601, -47.8701), -- ICC Norte
-('A definir', -15.7602, -47.8702), -- ICC Sul
-('A definir', -15.7603, -47.8703), -- ICC Centro
-('A definir', -15.7604, -47.8704), -- Arena
-('A definir', -15.7605, -47.8705), -- Estacionamento CEUBinho
-('A definir', -15.7606, -47.8706), -- Estacionamento UDFinho
-('A definir', -15.7607, -47.8707), -- IB
-('A definir', -15.7608, -47.8708), -- PJC
-('A definir', -15.7609, -47.8709), -- PAT
-('A definir', -15.7610, -47.8710), -- BSAS
-('A definir', -15.7611, -47.8711); -- BSAS (segunda entrada)
+('Perto do ICC Norte', -15.7630, -47.8710),
+('Em frente a BCE', -15.7615, -47.8725),
+('Ao lado do RU', -15.7655, -47.8735),
+('Na grama da FAU', -15.7600, -47.8690),
+('No Patinódromo', -15.7670, -47.8700);
 
 INSERT INTO local (idendereco, nome) VALUES
-(1, 'ICC Norte'),
-(2, 'ICC Sul'),
-(3, 'ICC Centro'),
-(4, 'Arena'),
-(5, 'Estacionamento CEUBinho'),
-(6, 'Estacionamento UDFinho'),
-(7, 'IB'),
-(8, 'PJC'),
-(9, 'PAT'),
-(10, 'BSAS'),
-(11, 'BSAS');
+(1, 'Revisão de Cálculo I'),
+(2, 'Palestra sobre IA'),
+(3, 'Futsal Semanal'),
+(4, 'Happy Hour da Prograd'),
+(5, 'Grupo de Estudos de BD');
+
+INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
+('11111111111', 1, 1, 8, 'Revisão de Cálculo I', CURRENT_DATE, '14:00:00', 'Grupo para revisar a matéria para a P1 de Cálculo I.');
+
+INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
+('22222222222', 2, 4, 2, 'Palestra sobre IA', CURRENT_DATE, '10:00:00', 'Palestra com especialista sobre o futuro da Inteligência Artificial.');
+
+INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
+('11111111111', 3, 1, 6, 'Futsal Semanal', CURRENT_DATE + 1, '17:00:00', 'Futsal aberto para todos os níveis, venha jogar!');
+
+INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
+('22222222222', 4, 2, 1, 'Happy Hour da Prograd', CURRENT_DATE + 2, '18:00:00', 'Confraternização dos servidores da Prograd.');
+
+INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
+('11111111111', 5, 1, 8, 'Grupo de Estudos de BD', CURRENT_DATE, '16:00:00', 'Vamos nos juntar para estudar para o projeto de Banco de Dados.');

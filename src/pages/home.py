@@ -202,7 +202,11 @@ def show_event_dialog(event_details, event_id):
                         st.error(f"Erro ao atualizar o evento: {e}")
 
             st.divider()
+<<<<<<< HEAD
             st.subheader("Exclusão de evento")
+=======
+            st.subheader("Zona de Perigo")
+>>>>>>> 97e97dc7002266443a0f80cce1543eac1edecfe6
             if st.button("🚨 Excluir Evento", use_container_width=True):
                 try:
                     # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys

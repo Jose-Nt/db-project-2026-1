@@ -24,8 +24,7 @@ _, center_col, _ = st.columns([1, 1.3, 1])
 with center_col:
     st.markdown("""
         <div class="login-header">
-            <h1>UniEvents</h1>
-            <p>Gerencie eventos universitários com simplicidade.</p>
+            <h1>UniEvents - <span style="color: #FF4D8D;">Participe</span> de <span style="color: #FF4D8D;">eventos</span> no campus!</h1>
         </div>
     """, unsafe_allow_html=True)
 

@@ -7,29 +7,53 @@
     width: 320px !important;
 }
 
-/* Estilo customizado para todos os botões */
-[data-testid="stAppViewContainer"] .stButton>button {
-    background-color: #FF4D8D;
-    color: white;
-    border: 2px solid #FF4D8D;
+/* Estilo customizado para TODOS os botões (Removemos a restrição do stAppViewContainer) */
+.stButton > button {
+    background-color: #FF4D8D !important;
+    color: white !important;
+    border: 2px solid #FF4D8D !important;
+    transition: all 0.3s ease;
 }
-[data-testid="stAppViewContainer"] .stButton>button:hover {
-    background-color: white;
-    color: #FF4D8D;
-    border: 2px solid #FF4D8D;
+
+/* Força a cor do texto para branco no estado normal */
+.stButton > button p {
+    color: white !important;
+}
+
+/* Efeito de Hover e de Clique (Focus/Active) - Resolve o bug de desaparecer o texto */
+.stButton > button:hover,
+.stButton > button:focus,
+.stButton > button:active {
+    background-color: white !important;
+    border-color: #FF4D8D !important;
+}
+
+/* Inverte a cor do texto nestes estados para ficar visível */
+.stButton > button:hover p,
+.stButton > button:focus p,
+.stButton > button:active p {
+    color: #FF4D8D !important;
 }
 
 /* Estiliza o botão de logout para parecer apenas um ícone clicável */
 button[key="logout_button"] {
-    background-color: #FFE4EC !important; /* Cor de fundo da sidebar do Streamlit (tema escuro) */
-    border: #000000 !important;
+    background-color: transparent !important;
+    border: none !important;
     padding: 0px;
     font-size: 1.8em;
     opacity: 0.7;
     transition: opacity 0.2s, transform 0.2s;
+    box-shadow: none !important;
 }
 
-button[key="logout_button"]:hover {
+button[key="logout_button"] p {
+    color: #FF4D8D !important;
+}
+
+button[key="logout_button"]:hover,
+button[key="logout_button"]:focus {
     opacity: 1;
     transform: scale(1.1);
+    background-color: transparent !important;
+    border: none !important;
 }

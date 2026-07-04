@@ -4,7 +4,7 @@ from datetime import date
 import streamlit as st
 import pandas as pd
 import psycopg2
-
+import streamlit.components.v1 as components
 
 page_setup(page_name="login")
 
@@ -39,7 +39,7 @@ with center_col:
 
                 if submitted:
                     if not cpf or not senha:
-                        st.error("Por favor, insira seu CPF e senha.")
+                        st.error("Por favor, insira o seu CPF e senha.")
                     else:
                         try:
                             user_df = db_manager.execute_query(
@@ -52,13 +52,13 @@ with center_col:
                                 st.success("Login bem-sucedido!")
                                 st.switch_page("pages/home.py")
                             else:
-                                st.error("CPF ou senha inválidos. Por favor, verifique ou registre-se.")
+                                st.error("CPF ou senha inválidos. Por favor, verifique ou registe-se.")
                         except psycopg2.Error as e:
-                            st.error(f"Ocorreu um erro de banco de dados durante o login: {e}")
+                            st.error(f"Ocorreu um erro de base de dados durante o login: {e}")
 
         with register_tab:
             with st.form("register_form"):
-                st.subheader("Crie sua conta")
+                st.subheader("Crie a sua conta")
 
                 try:
                     departamentos_df = db_manager.execute_query("SELECT id_departamento, nome FROM departamento")
@@ -71,12 +71,12 @@ with center_col:
                     cpf_reg = st.text_input("CPF (apenas números)", max_chars=11, key="cpf_reg")
                     data_nasc = st.date_input("Data de Nascimento", min_value=date(1920, 1, 1), max_value=date.today())
                     senha_reg = st.text_input("Senha", type="password", key="senha_reg")
-                    confirma_senha_reg = st.text_input("Confirme sua Senha", type="password", key="confirma_senha_reg")
+                    confirma_senha_reg = st.text_input("Confirme a sua Senha", type="password", key="confirma_senha_reg")
                     
                     dep_selecionado = st.selectbox("Departamento", options=list(departamentos.keys()))
-                    tipo_selecionado = st.selectbox("Tipo de Usuário", options=list(tipos_usuario.keys()))
+                    tipo_selecionado = st.selectbox("Tipo de Utilizador", options=list(tipos_usuario.keys()))
 
-                    register_submitted = st.form_submit_button("Registrar", use_container_width=True)
+                    register_submitted = st.form_submit_button("Registar", use_container_width=True)
 
                     if register_submitted:
                         if not all([nome, cpf_reg, data_nasc, senha_reg, confirma_senha_reg, dep_selecionado, tipo_selecionado]):
@@ -93,7 +93,7 @@ with center_col:
                                 params=(cpf_reg,)
                             )
                             if not user_exists_df.empty:
-                                st.error("Este CPF já está cadastrado. Tente fazer o login.")
+                                st.error("Este CPF já está registado. Tente iniciar sessão.")
                             else:
                                 new_user_data = {
                                     "cpf": [cpf_reg],
@@ -106,9 +106,52 @@ with center_col:
                                 new_user_df = pd.DataFrame(new_user_data)
                                 try:
                                     db_manager.insert_data_into_table(new_user_df, "usuario")
-                                    st.success("Usuário registrado com sucesso! Vá para a aba 'Login' para entrar.")
+                                    st.success("Utilizador registado com sucesso! Vá para a aba 'Login' para entrar.")
                                 except psycopg2.Error as e:
-                                    st.error(f"Ocorreu um erro de banco de dados durante o registro: {e}")
+                                    st.error(f"Ocorreu um erro de base de dados durante o registo: {e}")
                 
                 except psycopg2.Error as e:
                     st.error(f"Não foi possível carregar os dados para o formulário: {e}")
+
+# --- SCRIPT PARA O ENTER PULAR CAMPOS ---
+components.html("""
+    <script>
+        const doc = window.parent.document;
+        
+        if (!doc.getElementById('enter-tab-script')) {
+            const marker = doc.createElement('div');
+            marker.id = 'enter-tab-script';
+            doc.body.appendChild(marker);
+            
+            doc.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const active = doc.activeElement;
+                    
+                    if (active && active.tagName === 'INPUT') {
+                        e.preventDefault(); 
+                        
+                        // Seleciona todos os campos que queremos navegar
+                        const allElements = Array.from(doc.querySelectorAll('input:not([type="hidden"]), button'));
+                        
+                        // Filtro rígido:
+                        // 1. Remove qualquer botão que contenha um elemento SVG (o "olhinho" é um SVG)
+                        // 2. Garante que o botão tenha texto visível (evita botões decorativos)
+                        const focusables = allElements.filter(el => {
+                            if (el.tagName === 'BUTTON') {
+                                const hasSvg = el.querySelector('svg') !== null;
+                                const hasText = el.textContent.trim().length > 0;
+                                return hasText && !hasSvg;
+                            }
+                            return true;
+                        });
+                        
+                        const index = focusables.indexOf(active);
+                        if (index > -1 && index < focusables.length - 1) {
+                            focusables[index + 1].focus();
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+""", height=0, width=0)

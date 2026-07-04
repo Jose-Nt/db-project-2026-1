@@ -38,7 +38,6 @@ with st.sidebar:
     st.write('')
     st.write('')
     st.write('')
-    st.write('')
     st.divider()
     if st.button("Logout ⏻", help="Sair da Conta", key="logout_button", use_container_width=True):
         st.session_state.logged_in = False

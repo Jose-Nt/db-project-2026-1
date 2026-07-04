@@ -1,11 +1,133 @@
-/* Estilo customizado para todos os botões */
-.stButton>button {
+/* ========================================== */
+/* 1. Estilos Globais e de Fonte
+/* ========================================== */
+.stApp {
+    background-color: #F7F8FA;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ========================================== */
+/* 2. Layout e Container Principal
+/* ========================================== */
+/* Ajusta o padding do container principal da página */
+.block-container {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* ========================================== */
+/* 3. Cabeçalho
+/* ========================================== */
+.login-header {
+    text-align: center; /* Centraliza o texto dentro do cabeçalho */
+    margin-bottom: 2rem; /* Espaço entre o cabeçalho e o card */
+}
+
+.login-header h1 {
+    font-size: 48px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.login-header p {
+    font-size: 1.1rem;
+    color: #6B7280;
+    margin: 0;
+}
+
+/* ========================================== */
+/* 4. Card do Formulário
+/* ========================================== */
+/*
+  Seleciona o container que agrupa os elementos do formulário.
+  - `[data-testid="stVerticalBlock"]`: O container vertical gerado pelo st.columns.
+  - `> div > div > [data-testid="stVerticalBlock"]`: Navega até o container interno que criamos com st.container().
+  - `> div:nth-child(2)`: Seleciona o segundo filho, que é o container real com o conteúdo.
+*/
+[data-testid="stVerticalBlock"] > div > div > [data-testid="stVerticalBlock"] > div:nth-child(2) {
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E5E7EB;
+    padding: 40px;
+}
+
+/* ========================================== */
+/* 5. Abas (Login / Registrar)
+/* ========================================== */
+/* Botões das abas */
+[data-testid="stTabs"] button {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+}
+
+/* Aba não selecionada */
+[data-testid="stTabs"] button:not([aria-selected="true"]) {
+    color: #6B7280;
+}
+
+/* Aba selecionada */
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #FF4D8D;
+    border-bottom-color: #FF4D8D !important;
+}
+
+/* ========================================== */
+/* 6. Campos de Input
+/* ========================================== */
+/* Estilo base para todos os inputs (texto, data, select) */
+[data-testid="stTextInput"] div[data-baseweb="input"] > div,
+[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    height: 48px;
+    border-radius: 10px;
+    border: 1px solid #E5E7EB;
+    background-color: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Efeito de foco para os inputs */
+[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within,
+[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within {
+    border-color: #FF4D8D;
+    box-shadow: 0 0 0 2px rgba(255, 77, 141, 0.2);
+}
+
+/* ========================================== */
+/* 7. Botão Principal
+/* ========================================== */
+.stButton > button {
+    height: 48px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
     background-color: #FF4D8D;
-    color: white;
+    color: white !important;
     border: 2px solid #FF4D8D;
 }
-.stButton>button:hover {
+
+.stButton > button:hover {
     background-color: white;
-    color: #FF4D8D;
-    border: 2px solid #FF4D8D;
+    color: #FF4D8D !important;
+    border-color: #FF4D8D;
+}
+
+/* ========================================== */
+/* 9. Responsividade
+/* ========================================== */
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+    [data-testid="stVerticalBlock"] > div > div > [data-testid="stVerticalBlock"] > div:nth-child(2) {
+        padding: 24px;
+    }
+    .login-header h1 {
+        font-size: 40px;
+    }
 }

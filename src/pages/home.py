@@ -11,7 +11,7 @@ import folium
 page_setup(page_name="home")
 
 if not st.session_state.get("logged_in", False):
-    st.error("Você precisa estar logado para acessar esta página.")
+    st.error("Precisa de iniciar sessão para aceder a esta página.")
     st.switch_page("pages/login.py")
     st.stop()
 
@@ -21,7 +21,7 @@ if "view_mode" not in st.session_state:
 
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
-    st.title(f"Bem-vindo(a), {user_info.get('nome', 'Usuário').split()[0]}!")
+    st.title(f"Bem-vindo(a), {user_info.get('nome', 'Utilizador').split()[0]}!")
     st.divider()
 
     # Botões para alternar a visualização
@@ -46,12 +46,12 @@ with st.sidebar:
         st.switch_page("pages/login.py")
 
 
-# --- Lógica de Banco de Dados ---
+# --- Lógica de Base de Dados ---
 db_manager = PostgreSqlManager()
 
 @st.cache_data(ttl=30)
 def fetch_eventos_from_db(filter_date):
-    """Busca e formata os eventos do banco de dados."""
+    """Busca e formata os eventos da base de dados."""
     query = """
         SELECT
             e.id_evento,
@@ -71,7 +71,7 @@ def fetch_eventos_from_db(filter_date):
         eventos_df = db_manager.execute_query(query, params=(filter_date,))
         return eventos_df.to_dict('records')
     except Exception as e:
-        st.error(f"Erro ao buscar eventos: {e}")
+        st.error(f"Erro ao procurar eventos: {e}")
         return []
 
 @st.cache_data(ttl=3600)
@@ -95,6 +95,10 @@ def fetch_event_details(event_id):
             e.titulo,
             e.descricao,
             e.horario,
+            e.data,
+            e.idusuario,
+            e.idcategoria,
+            e.idpublico_alvo,
             en.referencia
         FROM evento e
         JOIN local l ON e.idlocal = l.id_local
@@ -107,36 +111,107 @@ def fetch_event_details(event_id):
             return details_df.iloc[0].to_dict()
         return None
     except Exception as e:
-        st.error(f"Erro ao buscar detalhes do evento: {e}")
+        st.error(f"Erro ao procurar detalhes do evento: {e}")
         return None
 
 @st.dialog("Detalhes do Evento")
 def show_event_dialog(event_details, event_id):
-    """Exibe os detalhes de um evento em um diálogo nativo do Streamlit."""
-    st.subheader(event_details['titulo'])
-    st.write(f"**Descrição:** {event_details['descricao']}")
-    st.write(f"**Ponto de Referência:** {event_details['referencia']}")
-    st.write(f"**Horário:** {event_details['horario'].strftime('%H:%M')}")
-    
-    if st.button("Participar", use_container_width=True):
-        try:
-            # Verifica se o usuário já participa
-            check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
-            already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], event_id)).empty
+    """Exibe os detalhes de um evento num diálogo nativo do Streamlit."""
+    # Verifica se o usuário atual é o criador do evento
+    is_owner = event_details['idusuario'] == user_info['cpf']
 
-            if already_participating:
-                st.warning(f"Você já está participando de '{event_details['titulo']}'.")
-            else:
-                participacao_df = pd.DataFrame([{
-                    "idusuario": user_info['cpf'],
-                    "idevento": event_id,
-                    "data_inscricao": datetime.now().date()
-                }])
-                db_manager.insert_data_into_table(participacao_df, "participacao")
-                st.success(f"Presença confirmada em '{event_details['titulo']}'!")
-                st.cache_data.clear() # Limpa o cache para forçar a releitura dos dados
-        except psycopg2.Error as e:
-            st.error(f"Erro ao registrar participação: {e}")
+    if is_owner:
+        tab_info, tab_edit = st.tabs(["Informações", "Gerenciar Evento"])
+    else:
+        tab_info = st.container()
+        tab_edit = None
+
+    with tab_info:
+        st.subheader(event_details['titulo'])
+        st.write(f"**Descrição:** {event_details['descricao']}")
+        st.write(f"**Ponto de Referência:** {event_details['referencia']}")
+        st.write(f"**Data:** {event_details['data'].strftime('%d/%m/%Y')} às {event_details['horario'].strftime('%H:%M')}")
+        
+        if st.button("Participar", use_container_width=True):
+            try:
+                # Verifica se o utilizador já participa
+                check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
+                already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], event_id)).empty
+
+                if already_participating:
+                    st.warning(f"Já está a participar de '{event_details['titulo']}'.")
+                else:
+                    participacao_df = pd.DataFrame([{
+                        "idusuario": user_info['cpf'],
+                        "idevento": event_id,
+                        "data_inscricao": datetime.now().date()
+                    }])
+                    db_manager.insert_data_into_table(participacao_df, "participacao")
+                    st.success(f"Presença confirmada em '{event_details['titulo']}'!")
+                    st.cache_data.clear() # Limpa a cache para forçar a releitura dos dados
+            except psycopg2.Error as e:
+                st.error(f"Erro ao registar participação: {e}")
+
+    if tab_edit:
+        with tab_edit:
+            st.subheader("Editar Detalhes")
+            with st.form(f"form_edit_{event_id}"):
+                categorias_map = {row['nome']: row['id_categoria'] for _, row in categorias_df.iterrows()}
+                publicos_map = {row['nome']: row['id_publico'] for _, row in publicos_df.iterrows()}
+                
+                id_to_cat = {v: k for k, v in categorias_map.items()}
+                id_to_pub = {v: k for k, v in publicos_map.items()}
+
+                cat_atual = id_to_cat.get(event_details['idcategoria'])
+                pub_atual = id_to_pub.get(event_details['idpublico_alvo'])
+                
+                cat_index = list(categorias_map.keys()).index(cat_atual) if cat_atual in categorias_map else 0
+                pub_index = list(publicos_map.keys()).index(pub_atual) if pub_atual in publicos_map else 0
+
+                edit_titulo = st.text_input("Título", value=event_details['titulo'])
+                edit_desc = st.text_area("Descrição", value=event_details['descricao'])
+                
+                col1, col2 = st.columns(2)
+                with col1: edit_data = st.date_input("Data", value=event_details['data'])
+                with col2: edit_horario = st.time_input("Horário", value=event_details['horario'])
+                
+                col3, col4 = st.columns(2)
+                with col3: edit_cat = st.selectbox("Categoria", options=list(categorias_map.keys()), index=cat_index)
+                with col4: edit_pub = st.selectbox("Público-Alvo", options=list(publicos_map.keys()), index=pub_index)
+
+                btn_salvar = st.form_submit_button("Salvar Alterações", use_container_width=True)
+                
+                if btn_salvar:
+                    update_data = {
+                        "titulo": edit_titulo,
+                        "descricao": edit_desc,
+                        "data": edit_data,
+                        "horario": edit_horario,
+                        "idcategoria": categorias_map[edit_cat],
+                        "idpublico_alvo": publicos_map[edit_pub]
+                    }
+                    try:
+                        db_manager.update_table("evento", update_data, "id_evento = %s", (event_id,))
+                        st.success("Evento atualizado com sucesso!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except psycopg2.Error as e:
+                        st.error(f"Erro ao atualizar o evento: {e}")
+
+            st.divider()
+            st.subheader("Zona de Perigo")
+            if st.button("🚨 Excluir Evento", use_container_width=True):
+                try:
+                    # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
+                    db_manager.execute_non_query("DELETE FROM participacao WHERE idevento = %s", (event_id,))
+                    db_manager.execute_non_query("DELETE FROM comentario WHERE idevento = %s", (event_id,))
+                    db_manager.delete_rows_by_condition("evento", "id_evento", event_id)
+                    
+                    st.success("Evento excluído com sucesso!")
+                    st.cache_data.clear()
+                    st.rerun()
+                except psycopg2.Error as e:
+                    st.error(f"Erro ao excluir o evento: {e}")
 
 # Busca os dados que podem ser usados em múltiplas visualizações (mapa, perfil)
 categorias_df, publicos_df, departamentos_df, tipos_usuario_df = fetch_form_data()
@@ -205,18 +280,34 @@ if st.session_state.view_mode == "mapa":
             nova_cat_nome = st.selectbox("Categoria", options=categorias_map.keys())
             novo_publico_nome = st.selectbox("Público-Alvo", options=publicos_map.keys())
             botao_salvar = st.form_submit_button("Publicar no Campus", use_container_width=True)
+            
             if botao_salvar:
                 if all([novo_titulo, nova_desc, nova_referencia, nova_data, novo_horario, nova_cat_nome, novo_publico_nome]):
                     try:
-                        params = [novo_titulo, nova_desc, nova_referencia, coordenadas_clicadas['lat'], coordenadas_clicadas['lng'], novo_horario, nova_data, user_info['cpf'], publicos_map[novo_publico_nome], categorias_map[nova_cat_nome]]
+                        # CORREÇÃO AQUI: Forçar explicitamente os tipos de dados para o Postgres não se confundir
+                        params = [
+                            str(novo_titulo),
+                            str(nova_desc),
+                            str(nova_referencia),
+                            float(coordenadas_clicadas['lat']), # Assegura que é FLOAT
+                            float(coordenadas_clicadas['lng']), # Assegura que é FLOAT
+                            novo_horario,
+                            nova_data,
+                            str(user_info['cpf']),
+                            int(publicos_map[novo_publico_nome]),
+                            int(categorias_map[nova_cat_nome])
+                        ]
+                        
                         db_manager.call_procedure('create_full_event', params)
                         st.success("Evento criado com sucesso! O mapa será atualizado.")
                         st.cache_data.clear(); st.rerun()
-                    except psycopg2.Error as e: st.error(f"Ocorreu um erro ao criar o evento: {e}")
-                else: st.warning("Por favor, preencha todos os campos do evento.")
+                    except psycopg2.Error as e: 
+                        st.error(f"Ocorreu um erro ao criar o evento: {e}")
+                else: 
+                    st.warning("Por favor, preencha todos os campos do evento.")
     else:
         st.subheader("ℹ️ Como funciona?")
-        st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no íncone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
+        st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no ícone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
 
 elif st.session_state.view_mode == "lista":
     st.title("UniEvents - Darcy Ribeiro")
@@ -244,7 +335,7 @@ elif st.session_state.view_mode == "lista":
                     show_event_dialog(event_details, ev['id_evento'])
 
 elif st.session_state.view_mode == "perfil":
-    st.header("Meu Perfil")
+    st.header("O Meu Perfil")
 
     user_info = st.session_state.get("user_info", {})
     departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
@@ -256,7 +347,7 @@ elif st.session_state.view_mode == "perfil":
 
     st.divider()
     with st.form("form_update_profile"):
-        st.subheader("Suas Informações")
+        st.subheader("As Suas Informações")
 
         # Campos não editáveis
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
@@ -269,13 +360,13 @@ elif st.session_state.view_mode == "perfil":
         dep_selecionado_nome = st.selectbox("Departamento", options=departamentos_map.keys(), index=list(departamentos_map.keys()).index(dep_atual_nome) if dep_atual_nome in departamentos_map else 0)
 
         tipo_atual_nome = id_to_tipo_usuario.get(user_info.get('idtipo_usuario'))
-        tipo_selecionado_nome = st.selectbox("Tipo de Usuário", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
+        tipo_selecionado_nome = st.selectbox("Tipo de Utilizador", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
 
-        st.subheader("Alterar Senha")
-        nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
-        confirma_nova_senha = st.text_input("Confirme a Nova Senha", type="password")
+        st.subheader("Alterar Palavra-passe")
+        nova_senha = st.text_input("Nova Palavra-passe (deixe em branco para não alterar)", type="password")
+        confirma_nova_senha = st.text_input("Confirme a Nova Palavra-passe", type="password")
 
-        botao_salvar = st.form_submit_button("Salvar Alterações", use_container_width=True)
+        botao_salvar = st.form_submit_button("Guardar Alterações", use_container_width=True)
 
         if botao_salvar:
             update_data = {
@@ -289,15 +380,15 @@ elif st.session_state.view_mode == "perfil":
                     if len(nova_senha) >= 6:
                         update_data["senha"] = nova_senha
                     else:
-                        st.error("A nova senha deve ter no mínimo 6 caracteres.")
+                        st.error("A nova palavra-passe deve ter no mínimo 6 caracteres.")
                         st.stop()
                 else:
-                    st.error("As novas senhas não coincidem.")
+                    st.error("As novas palavras-passe não coincidem.")
                     st.stop()
             
             try:
                 db_manager.update_table("usuario", update_data, "cpf = %s", (user_info['cpf'],))
-                st.success("Perfil atualizado com sucesso! Você será redirecionado para a página de login.")
+                st.success("Perfil atualizado com sucesso! Será redirecionado para a página de início de sessão.")
                 
                 # Limpa a sessão e redireciona para o login
                 st.session_state.logged_in = False

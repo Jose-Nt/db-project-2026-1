@@ -96,6 +96,7 @@ def fetch_event_details(event_id):
             e.descricao,
             e.horario,
             e.data,
+            u.nome AS nome_organizador,
             e.idusuario,
             e.idcategoria,
             e.idpublico_alvo,
@@ -103,6 +104,7 @@ def fetch_event_details(event_id):
         FROM evento e
         JOIN local l ON e.idlocal = l.id_local
         JOIN endereco en ON l.idendereco = en.id_endereco
+        JOIN usuario u ON e.idusuario = u.cpf
         WHERE e.id_evento = %s;
     """
     try:
@@ -128,6 +130,7 @@ def show_event_dialog(event_details, event_id):
 
     with tab_info:
         st.subheader(event_details['titulo'])
+        st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
         st.write(f"**Descrição:** {event_details['descricao']}")
         st.write(f"**Ponto de Referência:** {event_details['referencia']}")
         st.write(f"**Data:** {event_details['data'].strftime('%d/%m/%Y')} às {event_details['horario'].strftime('%H:%M')}")

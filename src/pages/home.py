@@ -32,6 +32,21 @@ with st.sidebar:
     if st.button("Perfil", use_container_width=True):
         st.session_state.view_mode = "perfil"
 
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+    st.divider()
+    if st.button("Logout ⏻", help="Sair da Conta", key="logout_button", use_container_width=True):
+        st.session_state.logged_in = False
+        if "user_info" in st.session_state:
+            del st.session_state.user_info
+        st.switch_page("pages/login.py")
+
+
 # --- Lógica de Banco de Dados ---
 db_manager = PostgreSqlManager()
 

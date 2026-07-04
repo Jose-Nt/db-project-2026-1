@@ -2,14 +2,34 @@
     padding-top: 0.5rem;
 }
 
+/* Define uma largura fixa para a sidebar */
+[data-testid="stSidebar"] {
+    width: 320px !important;
+}
+
 /* Estilo customizado para todos os botões */
-.stButton>button {
+[data-testid="stAppViewContainer"] .stButton>button {
     background-color: #FF4D8D;
     color: white;
     border: 2px solid #FF4D8D;
 }
-.stButton>button:hover {
+[data-testid="stAppViewContainer"] .stButton>button:hover {
     background-color: white;
     color: #FF4D8D;
     border: 2px solid #FF4D8D;
+}
+
+/* Estiliza o botão de logout para parecer apenas um ícone clicável */
+button[key="logout_button"] {
+    background-color: #FFE4EC !important; /* Cor de fundo da sidebar do Streamlit (tema escuro) */
+    border: #000000 !important;
+    padding: 0px;
+    font-size: 1.8em;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+button[key="logout_button"]:hover {
+    opacity: 1;
+    transform: scale(1.1);
 }

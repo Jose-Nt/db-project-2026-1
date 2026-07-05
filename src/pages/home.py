@@ -47,7 +47,6 @@ with st.sidebar:
         </h1>
     </div>
     """, unsafe_allow_html=True)
-    #st.title(f"Bem-vindo(a), {user_info.get('nome', 'Utilizador').split()[0]}!")
     st.divider()
 
     # Botões para alternar a visualização
@@ -443,7 +442,7 @@ elif st.session_state.view_mode == "lista":
                     show_event_dialog(event_details, ev['id_evento'])
 
 elif st.session_state.view_mode == "perfil":
-    st.header("O Meu Perfil")
+    st.header("Meu Perfil")
 
     user_info = st.session_state.get("user_info", {})
     departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
@@ -455,7 +454,7 @@ elif st.session_state.view_mode == "perfil":
 
     st.divider()
     with st.form("form_update_profile"):
-        st.subheader("As Suas Informações")
+        st.subheader("Dados Pessoais")
 
         # Campos não editáveis
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
@@ -468,11 +467,11 @@ elif st.session_state.view_mode == "perfil":
         dep_selecionado_nome = st.selectbox("Departamento", options=departamentos_map.keys(), index=list(departamentos_map.keys()).index(dep_atual_nome) if dep_atual_nome in departamentos_map else 0)
 
         tipo_atual_nome = id_to_tipo_usuario.get(user_info.get('idtipo_usuario'))
-        tipo_selecionado_nome = st.selectbox("Tipo de Utilizador", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
+        tipo_selecionado_nome = st.selectbox("Tipo de Usuário", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
 
-        st.subheader("Alterar Palavra-passe")
-        nova_senha = st.text_input("Nova Palavra-passe (deixe em branco para não alterar)", type="password")
-        confirma_nova_senha = st.text_input("Confirme a Nova Palavra-passe", type="password")
+        st.subheader("Alterar Senha")
+        nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
+        confirma_nova_senha = st.text_input("Confirme a Nova Senha", type="password")
 
         botao_salvar = st.form_submit_button("Guardar Alterações", use_container_width=True)
 
@@ -488,7 +487,7 @@ elif st.session_state.view_mode == "perfil":
                     if len(nova_senha) >= 6:
                         update_data["senha"] = nova_senha
                     else:
-                        st.error("A nova palavra-passe deve ter no mínimo 6 caracteres.")
+                        st.error("A nova senha deve ter no mínimo 6 caracteres.")
                         st.stop()
                 else:
                     st.error("As novas palavras-passe não coincidem.")

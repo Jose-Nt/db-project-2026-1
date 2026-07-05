@@ -19,9 +19,27 @@ if not st.session_state.get("logged_in", False):
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "mapa"
 
+# Inicializa o estado para controlar o diálogo do evento
+if "show_event_dialog_id" not in st.session_state:
+    st.session_state.show_event_dialog_id = None
+
+# Novo estado para rastrear o último clique processado e evitar reaberturas
+if "last_processed_click" not in st.session_state:
+    st.session_state.last_processed_click = None
+
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
-    st.title(f"Bem-vindo(a), {user_info.get('nome', 'Utilizador').split()[0]}!")
+    st.markdown(f"""
+    <div class="login-header">
+        <h1 style="font-weight: bold;">
+            Bem-vindo(a),
+            <span style="color: #FF4D8D; font-weight: bold;">
+                {user_info.get('nome', 'Utilizador').split()[0]}
+            </span>!
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
+    #st.title(f"Bem-vindo(a), {user_info.get('nome', 'Utilizador').split()[0]}!")
     st.divider()
 
     # Botões para alternar a visualização
@@ -202,11 +220,7 @@ def show_event_dialog(event_details, event_id):
                         st.error(f"Erro ao atualizar o evento: {e}")
 
             st.divider()
-<<<<<<< HEAD
             st.subheader("Exclusão de evento")
-=======
-            st.subheader("Zona de Perigo")
->>>>>>> 97e97dc7002266443a0f80cce1543eac1edecfe6
             if st.button("🚨 Excluir Evento", use_container_width=True):
                 try:
                     # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
@@ -259,14 +273,25 @@ if st.session_state.view_mode == "mapa":
 
     mapa_interativo = st_folium(m, width="100%", height=500, key="unb_map")
 
-    clicked_marker_coords = mapa_interativo.get("last_object_clicked")
-    if clicked_marker_coords:
-        clicked_lat, clicked_lon = clicked_marker_coords['lat'], clicked_marker_coords['lng']
+    current_click = mapa_interativo.get("last_object_clicked")
+
+    # Verifica se houve um clique NOVO e se ele é diferente do último que já processamos
+    if current_click and current_click != st.session_state.last_processed_click:
+        # Armazena o clique atual para que não seja processado novamente em um rerun
+        st.session_state.last_processed_click = current_click
+        
+        clicked_lat, clicked_lon = current_click['lat'], current_click['lng']
         selected_event = next((ev for ev in eventos if ev['lat'] == clicked_lat and ev['lon'] == clicked_lon), None)
         if selected_event:
-            event_details = fetch_event_details(selected_event['id_evento'])
-            if event_details:
-                show_event_dialog(event_details, selected_event['id_evento'])
+            # Define o ID do evento para ser exibido
+            st.session_state.show_event_dialog_id = selected_event['id_evento']
+
+    # Mostra o diálogo se um ID de evento estiver definido no estado da sessão
+    if st.session_state.show_event_dialog_id:
+        event_details = fetch_event_details(st.session_state.show_event_dialog_id)
+        if event_details:
+            show_event_dialog(event_details, st.session_state.show_event_dialog_id)
+        st.session_state.show_event_dialog_id = None # Limpa o ID para que o diálogo não reabra sozinho
     
     st.divider()
 

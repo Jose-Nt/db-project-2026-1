@@ -27,6 +27,14 @@ if "show_event_dialog_id" not in st.session_state:
 if "last_processed_click" not in st.session_state:
     st.session_state.last_processed_click = None
 
+# Novo estado para controlar o scroll automático ao criar um evento
+if "last_map_create_click" not in st.session_state:
+    st.session_state.last_map_create_click = None
+
+# Flag para controlar a execução do script de scroll
+if "scroll_to_form" not in st.session_state:
+    st.session_state.scroll_to_form = False
+
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
     st.markdown(f"""
@@ -134,18 +142,41 @@ def fetch_event_details(event_id):
         st.error(f"Erro ao procurar detalhes do evento: {e}")
         return None
 
+@st.cache_data(ttl=15)
+def fetch_event_comments(event_id):
+    """Busca os comentários de um evento, juntando o nome do autor."""
+    query = """
+        SELECT
+            c.texto,
+            u.nome AS autor
+        FROM comentario c
+        JOIN usuario u ON c.idusuario = u.cpf
+        WHERE c.idevento = %s
+        ORDER BY c.id_comentario ASC;
+    """
+    try:
+        comments_df = db_manager.execute_query(query, params=(event_id,))
+        return comments_df.to_dict('records')
+    except Exception as e:
+        st.error(f"Erro ao carregar comentários: {e}")
+        return []
+
 @st.dialog("Detalhes do Evento")
 def show_event_dialog(event_details, event_id):
     """Exibe os detalhes de um evento num diálogo nativo do Streamlit."""
     # Verifica se o usuário atual é o criador do evento
     is_owner = event_details['idusuario'] == user_info['cpf']
 
+    # Define as abas a serem exibidas
+    tab_titles = ["Informações", "Comentários"]
     if is_owner:
-        tab_info, tab_edit = st.tabs(["Informações", "Gerenciar Evento"])
-    else:
-        tab_info = st.container()
-        tab_edit = None
-
+        tab_titles.append("Gerenciar Evento")
+    
+    tabs = st.tabs(tab_titles)
+    tab_info = tabs[0]
+    tab_comments = tabs[1]
+    tab_edit = tabs[2] if is_owner else None
+    
     with tab_info:
         st.subheader(event_details['titulo'])
         st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
@@ -172,6 +203,31 @@ def show_event_dialog(event_details, event_id):
                     st.cache_data.clear() # Limpa a cache para forçar a releitura dos dados
             except psycopg2.Error as e:
                 st.error(f"Erro ao registar participação: {e}")
+
+    with tab_comments:
+        st.subheader("💬 Comentários")
+        comments = fetch_event_comments(event_id)
+        
+        # Área para exibir comentários existentes
+        with st.container(height=200):
+            if not comments:
+                st.info("Ainda não há comentários. Seja o primeiro a comentar!")
+            for comment in comments:
+                st.markdown(f"**{comment['autor'].split()[0]}:** {comment['texto']}")
+        
+        st.divider()
+
+        # Área para adicionar um novo comentário
+        new_comment = st.text_area("Deixe seu comentário:", key=f"comment_input_{event_id}")
+        if st.button("Comentar", key=f"comment_btn_{event_id}", use_container_width=True):
+            if new_comment:
+                comment_df = pd.DataFrame([{"idusuario": user_info['cpf'], "idevento": event_id, "texto": new_comment}])
+                db_manager.insert_data_into_table(comment_df, "comentario")
+                st.success("Comentário adicionado!")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.warning("Escreva algo para comentar.")
 
     if tab_edit:
         with tab_edit:
@@ -297,7 +353,14 @@ if st.session_state.view_mode == "mapa":
 
     # --- Painel de Ações (Criar Evento ou Instruções) ---
     coordenadas_clicadas = mapa_interativo.get("last_clicked")
+
+    # 1. Detecta um novo clique no mapa e define a flag para rolar a página
+    if coordenadas_clicadas and coordenadas_clicadas != st.session_state.get("last_map_create_click"):
+        st.session_state.last_map_create_click = coordenadas_clicadas
+        st.session_state.scroll_to_form = True
+
     if coordenadas_clicadas:
+        st.markdown("<div id='create-event-form-anchor'></div>", unsafe_allow_html=True)
         st.subheader("✨ Criar Novo Evento")
         st.info(f"Local selecionado: Lat: {coordenadas_clicadas['lat']:.4f} | Lon: {coordenadas_clicadas['lng']:.4f}")
         with st.form("form_novo_evento", clear_on_submit=True):
@@ -337,6 +400,19 @@ if st.session_state.view_mode == "mapa":
                         st.error(f"Ocorreu um erro ao criar o evento: {e}")
                 else: 
                     st.warning("Por favor, preencha todos os campos do evento.")
+        
+        # 2. Verifica a flag APÓS o formulário ser renderizado
+        if st.session_state.scroll_to_form:
+            # Injeta o JavaScript para rolar até a âncora
+            st.components.v1.html(
+                """
+                <script>
+                    document.getElementById('create-event-form-anchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                </script>
+                """,
+                height=0
+            )
+            st.session_state.scroll_to_form = False # 3. Reseta a flag
     else:
         st.subheader("ℹ️ Como funciona?")
         st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no ícone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")

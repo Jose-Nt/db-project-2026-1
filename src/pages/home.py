@@ -468,6 +468,9 @@ elif st.session_state.view_mode == "perfil":
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
         st.date_input("Data de Nascimento", value=user_info.get('data_nasc'), disabled=True)
 
+        # Campo para alterar a foto
+        nova_foto = st.file_uploader("Alterar Foto de Perfil (opcional)", type=['png', 'jpg', 'jpeg'])
+
         # Campos editáveis
         nome = st.text_input("Nome Completo", value=user_info.get('nome'))
         
@@ -489,6 +492,10 @@ elif st.session_state.view_mode == "perfil":
                 "iddepartamento": departamentos_map[dep_selecionado_nome],
                 "idtipo_usuario": tipos_usuario_map[tipo_selecionado_nome]
             }
+
+            # Adiciona a nova foto aos dados de atualização, se uma foi enviada
+            if nova_foto:
+                update_data["foto"] = nova_foto.getvalue()
 
             if nova_senha:
                 if nova_senha == confirma_nova_senha:

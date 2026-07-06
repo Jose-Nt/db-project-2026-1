@@ -79,18 +79,15 @@ def fetch_eventos_from_db(filter_date):
     """Busca e formata os eventos da base de dados."""
     query = """
         SELECT
-            e.id_evento,
-            e.titulo,
-            c.nome AS categoria,
-            en.latitude AS lat,
-            e.horario,
-            en.longitude AS lon,
-            (SELECT COUNT(*) FROM participacao p WHERE p.idevento = e.id_evento) AS participantes
-        FROM evento e
-        JOIN categoria c ON e.idcategoria = c.id_categoria
-        JOIN local l ON e.idlocal = l.id_local
-        JOIN endereco en ON l.idendereco = en.id_endereco
-        WHERE e.data = %s;
+            id_evento,
+            titulo,
+            categoria_nome AS categoria,
+            latitude AS lat,
+            horario,
+            longitude AS lon,
+            participantes
+        FROM vw_eventos_detalhados
+        WHERE data = %s;
     """
     try:
         eventos_df = db_manager.execute_query(query, params=(filter_date,))
@@ -116,25 +113,9 @@ def fetch_form_data():
 def fetch_event_details(event_id):
     """Busca os detalhes completos de um evento específico."""
     query = """
-        SELECT
-            e.titulo,
-            e.descricao,
-            e.horario,
-            e.data,
-            u.nome AS nome_organizador,
-            e.idusuario,
-            cat.nome AS categoria_nome,
-            pub.nome AS publico_alvo_nome,
-            e.idcategoria,
-            e.idpublico_alvo,
-            en.referencia
-        FROM evento e
-        JOIN local l ON e.idlocal = l.id_local
-        JOIN endereco en ON l.idendereco = en.id_endereco
-        JOIN usuario u ON e.idusuario = u.cpf
-        JOIN categoria cat ON e.idcategoria = cat.id_categoria
-        JOIN publico_alvo pub ON e.idpublico_alvo = pub.id_publico
-        WHERE e.id_evento = %s;
+        SELECT *
+        FROM vw_eventos_detalhados
+        WHERE id_evento = %s;
     """
     try:
         details_df = db_manager.execute_query(query, params=(event_id,))

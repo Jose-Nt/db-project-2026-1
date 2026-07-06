@@ -143,6 +143,37 @@ REFERENCES evento (id_evento);
 
 
 -- ==========================================
+-- VIEWS
+-- ==========================================
+
+CREATE OR REPLACE VIEW vw_eventos_detalhados AS
+SELECT
+    e.id_evento,
+    e.titulo,
+    e.descricao,
+    e.data,
+    e.horario,
+    e.idusuario,
+    u.nome AS nome_organizador,
+    e.idcategoria,
+    cat.nome AS categoria_nome,
+    e.idpublico_alvo,
+    pub.nome AS publico_alvo_nome,
+    e.idlocal,
+    l.idendereco,
+    en.referencia,
+    en.latitude,
+    en.longitude,
+    (SELECT COUNT(*) FROM participacao p WHERE p.idevento = e.id_evento) AS participantes
+FROM evento e
+JOIN usuario u ON e.idusuario = u.cpf
+JOIN categoria cat ON e.idcategoria = cat.id_categoria
+JOIN publico_alvo pub ON e.idpublico_alvo = pub.id_publico
+JOIN local l ON e.idlocal = l.id_local
+JOIN endereco en ON l.idendereco = en.id_endereco;
+
+
+-- ==========================================
 -- PROCEDURES / FUNCTIONS
 -- ==========================================
 

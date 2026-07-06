@@ -75,12 +75,13 @@ with center_col:
                     
                     dep_selecionado = st.selectbox("Departamento", options=list(departamentos.keys()))
                     tipo_selecionado = st.selectbox("Tipo de Utilizador", options=list(tipos_usuario.keys()))
+                    foto_perfil = st.file_uploader("Foto de Perfil", type=['png', 'jpg', 'jpeg'])
 
                     register_submitted = st.form_submit_button("Registar", use_container_width=True)
 
                     if register_submitted:
-                        if not all([nome, cpf_reg, data_nasc, senha_reg, confirma_senha_reg, dep_selecionado, tipo_selecionado]):
-                            st.error("Por favor, preencha todos os campos.")
+                        if not all([nome, cpf_reg, data_nasc, senha_reg, confirma_senha_reg, dep_selecionado, tipo_selecionado, foto_perfil]):
+                            st.error("Por favor, preencha todos os campos, incluindo a foto de perfil.")
                         elif senha_reg != confirma_senha_reg:
                             st.error("As senhas não coincidem.")
                         elif len(senha_reg) < 6:
@@ -101,12 +102,13 @@ with center_col:
                                     "idtipo_usuario": [tipos_usuario[tipo_selecionado]],
                                     "nome": [nome],
                                     "data_nasc": [data_nasc],
-                                    "senha": [senha_reg]
+                                    "senha": [senha_reg],
+                                    "foto": [foto_perfil.getvalue()]
                                 }
                                 new_user_df = pd.DataFrame(new_user_data)
                                 try:
                                     db_manager.insert_data_into_table(new_user_df, "usuario")
-                                    st.success("Utilizador registado com sucesso! Vá para a aba 'Login' para entrar.")
+                                    st.success("Usuário registado com sucesso! Vá para a aba 'Login' para entrar.")
                                 except psycopg2.Error as e:
                                     st.error(f"Ocorreu um erro de base de dados durante o registo: {e}")
                 

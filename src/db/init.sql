@@ -9,7 +9,8 @@ CREATE TABLE usuario
  idtipo_usuario INT NOT NULL,  
  nome VARCHAR NOT NULL,  
  data_nasc DATE NOT NULL,
- senha VARCHAR NOT NULL
+ senha VARCHAR NOT NULL,
+ foto BYTEA NOT NULL
 ); 
 
 CREATE TABLE local 
@@ -277,16 +278,16 @@ INSERT INTO tipo_usuario (nome) VALUES
 -- USUÁRIOS DE EXEMPLO
 -- ==========================================
 
-INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha) VALUES
-('11111111111', 1, 1, 'Joao Souza', '2000-01-01', 'senha123'),
-('22222222222', 4, 3, 'Ana Lima', '1995-05-10', 'senha123'),
-('33333333333', 1, 2, 'José Fonseca', '2000-05-10', 'senha123'),
-('44444444444', 2, 4, 'Maria Silva', '1985-05-10', 'senha123'),
-('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123'),
-('66666666666', 3, 1, 'Ricardo Rocha', '1975-05-10', 'senha123'),
-('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123'),
-('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123'),
-('99999999999', 7, 5, 'Isabela Souza', '1975-05-10', 'senha123');
+INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha, foto) VALUES
+('11111111111', 1, 1, 'Joao Souza', '2000-01-01', 'senha123', E'\\000'),
+('22222222222', 4, 3, 'Ana Lima', '1995-05-10', 'senha123', E'\\000'),
+('33333333333', 1, 2, 'José Fonseca', '2000-05-10', 'senha123', E'\\000'),
+('44444444444', 2, 4, 'Maria Silva', '1985-05-10', 'senha123', E'\\000'),
+('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123', E'\\000'),
+('66666666666', 3, 1, 'Ricardo Rocha', '1975-05-10', 'senha123', E'\\000'),
+('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123', E'\\000'),
+('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123', E'\\000'),
+('99999999999', 7, 5, 'Isabela Souza', '1975-05-10', 'senha123', E'\\000');
 
 
 -- ==========================================

@@ -123,6 +123,8 @@ def fetch_event_details(event_id):
             e.data,
             u.nome AS nome_organizador,
             e.idusuario,
+            cat.nome AS categoria_nome,
+            pub.nome AS publico_alvo_nome,
             e.idcategoria,
             e.idpublico_alvo,
             en.referencia
@@ -130,6 +132,8 @@ def fetch_event_details(event_id):
         JOIN local l ON e.idlocal = l.id_local
         JOIN endereco en ON l.idendereco = en.id_endereco
         JOIN usuario u ON e.idusuario = u.cpf
+        JOIN categoria cat ON e.idcategoria = cat.id_categoria
+        JOIN publico_alvo pub ON e.idpublico_alvo = pub.id_publico
         WHERE e.id_evento = %s;
     """
     try:
@@ -181,6 +185,8 @@ def show_event_dialog(event_details, event_id):
         st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
         st.write(f"**Descrição:** {event_details['descricao']}")
         st.write(f"**Ponto de Referência:** {event_details['referencia']}")
+        st.write(f"**Categoria:** {event_details['categoria_nome']}")
+        st.write(f"**Público-Alvo:** {event_details['publico_alvo_nome']}")
         st.write(f"**Data:** {event_details['data'].strftime('%d/%m/%Y')} às {event_details['horario'].strftime('%H:%M')}")
         
         if st.button("Participar", use_container_width=True):

@@ -245,7 +245,6 @@ SELECT create_full_event(
     4,                                                          -- p_id_publico_alvo (Comunidade acadêmica)
     2                                                           -- p_id_categoria (Carona)
 );
-
 SELECT create_full_event(
     'Carona para Taguatinga',                                                       
     'Indo para Taguatinga, vou com um vw gol cinza, 4 vagas no carro ainda.',
@@ -258,7 +257,6 @@ SELECT create_full_event(
     4,                                                          
     2                                                           
 );
-
 SELECT create_full_event(
     'HH da Aplicada',                               
     'HH da Aplicada, vai até às 21hrs. DJ ao vivo com funk anos 90!',        
@@ -271,7 +269,6 @@ SELECT create_full_event(
     1,                                                          
     1                                                          
 );
-
 SELECT create_full_event(
     'Vôlei',                               
     'Vôlei aqui para quem quiser participar, vai até às 18hrs. Não precisa trazer equipamento e nem ter experiência.',        
@@ -284,7 +281,6 @@ SELECT create_full_event(
     5,                                                          
     3                                                         
 );
-
 SELECT create_full_event(
     'Coffee Break no IQ',                              
     'Vai rolar um coffee break no IQ depois de um evento sobre química quântica. Só chegar no final do evento!',

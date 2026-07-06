@@ -44,6 +44,10 @@ with st.sidebar:
         b64_foto = base64.b64encode(user_info['foto']).decode()
         st.markdown(f"""
             <style>
+            /* Reduz o espaçamento no topo da barra lateral para a foto subir */
+            [data-testid="stSidebar"] > div:first-child {{
+                padding-top: 1rem;
+            }}
             .profile-pic-container {{
                 display: flex;
                 justify-content: center;
@@ -82,13 +86,6 @@ with st.sidebar:
     if st.button("Perfil", use_container_width=True):
         st.session_state.view_mode = "perfil"
 
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.divider()
     if st.button("Logout ⏻", help="Sair da Conta", key="logout_button", use_container_width=True):
         st.session_state.logged_in = False
         if "user_info" in st.session_state:

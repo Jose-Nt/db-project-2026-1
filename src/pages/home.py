@@ -19,9 +19,34 @@ if not st.session_state.get("logged_in", False):
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "mapa"
 
+# Inicializa o estado para controlar o diálogo do evento
+if "show_event_dialog_id" not in st.session_state:
+    st.session_state.show_event_dialog_id = None
+
+# Novo estado para rastrear o último clique processado e evitar reaberturas
+if "last_processed_click" not in st.session_state:
+    st.session_state.last_processed_click = None
+
+# Novo estado para controlar o scroll automático ao criar um evento
+if "last_map_create_click" not in st.session_state:
+    st.session_state.last_map_create_click = None
+
+# Flag para controlar a execução do script de scroll
+if "scroll_to_form" not in st.session_state:
+    st.session_state.scroll_to_form = False
+
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
-    st.title(f"Bem-vindo(a), {user_info.get('nome', 'Utilizador').split()[0]}!")
+    st.markdown(f"""
+    <div class="login-header">
+        <h1 style="font-weight: bold;">
+            Bem-vindo(a),
+            <span style="color: #FF4D8D; font-weight: bold;">
+                {user_info.get('nome', 'Utilizador').split()[0]}
+            </span>!
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     st.divider()
 
     # Botões para alternar a visualização
@@ -116,18 +141,41 @@ def fetch_event_details(event_id):
         st.error(f"Erro ao procurar detalhes do evento: {e}")
         return None
 
+@st.cache_data(ttl=15)
+def fetch_event_comments(event_id):
+    """Busca os comentários de um evento, juntando o nome do autor."""
+    query = """
+        SELECT
+            c.texto,
+            u.nome AS autor
+        FROM comentario c
+        JOIN usuario u ON c.idusuario = u.cpf
+        WHERE c.idevento = %s
+        ORDER BY c.id_comentario ASC;
+    """
+    try:
+        comments_df = db_manager.execute_query(query, params=(event_id,))
+        return comments_df.to_dict('records')
+    except Exception as e:
+        st.error(f"Erro ao carregar comentários: {e}")
+        return []
+
 @st.dialog("Detalhes do Evento")
 def show_event_dialog(event_details, event_id):
     """Exibe os detalhes de um evento num diálogo nativo do Streamlit."""
     # Verifica se o usuário atual é o criador do evento
     is_owner = event_details['idusuario'] == user_info['cpf']
 
+    # Define as abas a serem exibidas
+    tab_titles = ["Informações", "Comentários"]
     if is_owner:
-        tab_info, tab_edit = st.tabs(["Informações", "Gerenciar Evento"])
-    else:
-        tab_info = st.container()
-        tab_edit = None
-
+        tab_titles.append("Gerenciar Evento")
+    
+    tabs = st.tabs(tab_titles)
+    tab_info = tabs[0]
+    tab_comments = tabs[1]
+    tab_edit = tabs[2] if is_owner else None
+    
     with tab_info:
         st.subheader(event_details['titulo'])
         st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
@@ -154,6 +202,31 @@ def show_event_dialog(event_details, event_id):
                     st.cache_data.clear() # Limpa a cache para forçar a releitura dos dados
             except psycopg2.Error as e:
                 st.error(f"Erro ao registar participação: {e}")
+
+    with tab_comments:
+        st.subheader("💬 Comentários")
+        comments = fetch_event_comments(event_id)
+        
+        # Área para exibir comentários existentes
+        with st.container(height=200):
+            if not comments:
+                st.info("Ainda não há comentários. Seja o primeiro a comentar!")
+            for comment in comments:
+                st.markdown(f"**{comment['autor'].split()[0]}:** {comment['texto']}")
+        
+        st.divider()
+
+        # Área para adicionar um novo comentário
+        new_comment = st.text_area("Deixe seu comentário:", key=f"comment_input_{event_id}")
+        if st.button("Comentar", key=f"comment_btn_{event_id}", use_container_width=True):
+            if new_comment:
+                comment_df = pd.DataFrame([{"idusuario": user_info['cpf'], "idevento": event_id, "texto": new_comment}])
+                db_manager.insert_data_into_table(comment_df, "comentario")
+                st.success("Comentário adicionado!")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.warning("Escreva algo para comentar.")
 
     if tab_edit:
         with tab_edit:
@@ -255,20 +328,38 @@ if st.session_state.view_mode == "mapa":
 
     mapa_interativo = st_folium(m, width="100%", height=500, key="unb_map")
 
-    clicked_marker_coords = mapa_interativo.get("last_object_clicked")
-    if clicked_marker_coords:
-        clicked_lat, clicked_lon = clicked_marker_coords['lat'], clicked_marker_coords['lng']
+    current_click = mapa_interativo.get("last_object_clicked")
+
+    # Verifica se houve um clique NOVO e se ele é diferente do último que já processamos
+    if current_click and current_click != st.session_state.last_processed_click:
+        # Armazena o clique atual para que não seja processado novamente em um rerun
+        st.session_state.last_processed_click = current_click
+        
+        clicked_lat, clicked_lon = current_click['lat'], current_click['lng']
         selected_event = next((ev for ev in eventos if ev['lat'] == clicked_lat and ev['lon'] == clicked_lon), None)
         if selected_event:
-            event_details = fetch_event_details(selected_event['id_evento'])
-            if event_details:
-                show_event_dialog(event_details, selected_event['id_evento'])
+            # Define o ID do evento para ser exibido
+            st.session_state.show_event_dialog_id = selected_event['id_evento']
+
+    # Mostra o diálogo se um ID de evento estiver definido no estado da sessão
+    if st.session_state.show_event_dialog_id:
+        event_details = fetch_event_details(st.session_state.show_event_dialog_id)
+        if event_details:
+            show_event_dialog(event_details, st.session_state.show_event_dialog_id)
+        st.session_state.show_event_dialog_id = None # Limpa o ID para que o diálogo não reabra sozinho
     
     st.divider()
 
     # --- Painel de Ações (Criar Evento ou Instruções) ---
     coordenadas_clicadas = mapa_interativo.get("last_clicked")
+
+    # 1. Detecta um novo clique no mapa e define a flag para rolar a página
+    if coordenadas_clicadas and coordenadas_clicadas != st.session_state.get("last_map_create_click"):
+        st.session_state.last_map_create_click = coordenadas_clicadas
+        st.session_state.scroll_to_form = True
+
     if coordenadas_clicadas:
+        st.markdown("<div id='create-event-form-anchor'></div>", unsafe_allow_html=True)
         st.subheader("✨ Criar Novo Evento")
         st.info(f"Local selecionado: Lat: {coordenadas_clicadas['lat']:.4f} | Lon: {coordenadas_clicadas['lng']:.4f}")
         with st.form("form_novo_evento", clear_on_submit=True):
@@ -308,6 +399,19 @@ if st.session_state.view_mode == "mapa":
                         st.error(f"Ocorreu um erro ao criar o evento: {e}")
                 else: 
                     st.warning("Por favor, preencha todos os campos do evento.")
+        
+        # 2. Verifica a flag APÓS o formulário ser renderizado
+        if st.session_state.scroll_to_form:
+            # Injeta o JavaScript para rolar até a âncora
+            st.components.v1.html(
+                """
+                <script>
+                    document.getElementById('create-event-form-anchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                </script>
+                """,
+                height=0
+            )
+            st.session_state.scroll_to_form = False # 3. Reseta a flag
     else:
         st.subheader("ℹ️ Como funciona?")
         st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no ícone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
@@ -338,7 +442,7 @@ elif st.session_state.view_mode == "lista":
                     show_event_dialog(event_details, ev['id_evento'])
 
 elif st.session_state.view_mode == "perfil":
-    st.header("O Meu Perfil")
+    st.header("Meu Perfil")
 
     user_info = st.session_state.get("user_info", {})
     departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
@@ -350,7 +454,7 @@ elif st.session_state.view_mode == "perfil":
 
     st.divider()
     with st.form("form_update_profile"):
-        st.subheader("As Suas Informações")
+        st.subheader("Dados Pessoais")
 
         # Campos não editáveis
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
@@ -363,11 +467,11 @@ elif st.session_state.view_mode == "perfil":
         dep_selecionado_nome = st.selectbox("Departamento", options=departamentos_map.keys(), index=list(departamentos_map.keys()).index(dep_atual_nome) if dep_atual_nome in departamentos_map else 0)
 
         tipo_atual_nome = id_to_tipo_usuario.get(user_info.get('idtipo_usuario'))
-        tipo_selecionado_nome = st.selectbox("Tipo de Utilizador", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
+        tipo_selecionado_nome = st.selectbox("Tipo de Usuário", options=tipos_usuario_map.keys(), index=list(tipos_usuario_map.keys()).index(tipo_atual_nome) if tipo_atual_nome in tipos_usuario_map else 0)
 
-        st.subheader("Alterar Palavra-passe")
-        nova_senha = st.text_input("Nova Palavra-passe (deixe em branco para não alterar)", type="password")
-        confirma_nova_senha = st.text_input("Confirme a Nova Palavra-passe", type="password")
+        st.subheader("Alterar Senha")
+        nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
+        confirma_nova_senha = st.text_input("Confirme a Nova Senha", type="password")
 
         botao_salvar = st.form_submit_button("Guardar Alterações", use_container_width=True)
 
@@ -383,7 +487,7 @@ elif st.session_state.view_mode == "perfil":
                     if len(nova_senha) >= 6:
                         update_data["senha"] = nova_senha
                     else:
-                        st.error("A nova palavra-passe deve ter no mínimo 6 caracteres.")
+                        st.error("A nova senha deve ter no mínimo 6 caracteres.")
                         st.stop()
                 else:
                     st.error("As novas palavras-passe não coincidem.")

@@ -1,5 +1,5 @@
 -- ==========================================
--- CREATE TABLES
+-- CRIAÇÃO DE TABELAS
 -- ==========================================
 
 CREATE TABLE usuario 
@@ -83,7 +83,7 @@ CREATE TABLE tipo_usuario
 
 
 -- ==========================================
--- CONSTRAINTS
+-- ADIÇÃO DE CONSTRAINTS
 -- ==========================================
 
 ALTER TABLE usuario
@@ -143,7 +143,39 @@ REFERENCES evento (id_evento);
 
 
 -- ==========================================
--- INSERTS IN STATIC TABLES
+-- PROCEDURES / FUNCTIONS
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION create_full_event(
+    p_titulo VARCHAR,
+    p_descricao VARCHAR,
+    p_referencia VARCHAR,
+    p_latitude FLOAT,
+    p_longitude FLOAT,
+    p_horario TIME,
+    p_data DATE,
+    p_id_usuario CHAR(11),
+    p_id_publico_alvo INT,
+    p_id_categoria INT
+) RETURNS VOID LANGUAGE plpgsql AS $$
+DECLARE
+    v_id_endereco INT;
+    v_id_local INT;
+BEGIN
+    INSERT INTO endereco (referencia, latitude, longitude)
+    VALUES (p_referencia, p_latitude, p_longitude) RETURNING id_endereco INTO v_id_endereco;
+
+    INSERT INTO local (idendereco, nome)
+    VALUES (v_id_endereco, p_titulo) RETURNING id_local INTO v_id_local;
+
+    INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao)
+    VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao);
+END;
+$$;
+
+
+-- ==========================================
+-- INSERTS EM TABELAS ESTÁTICAS
 -- ==========================================
 
 INSERT INTO publico_alvo (nome) VALUES
@@ -186,7 +218,7 @@ INSERT INTO tipo_usuario (nome) VALUES
 
 
 -- ==========================================
--- INSERTS FOR DEMONSTRATION
+-- USUÁRIOS DE EXEMPLO
 -- ==========================================
 
 INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha) VALUES
@@ -195,42 +227,14 @@ INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha
 ('33333333333', 1, 2, 'José Fonseca', '2000-05-10', 'senha123'),
 ('44444444444', 2, 4, 'Maria Silva', '1985-05-10', 'senha123'),
 ('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123');
+('66666666666', 3, 1, 'Ricardo Rocha', '1975-05-10', 'senha123');
+('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123');
+('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123');
+('99999999999', 7, 5, 'Isabela Souza', '1975-05-10', 'senha123');
 
 
 -- ==========================================
--- PROCEDURES / FUNCTIONS
--- ==========================================
-
-CREATE OR REPLACE FUNCTION create_full_event(
-    p_titulo VARCHAR,
-    p_descricao VARCHAR,
-    p_referencia VARCHAR,
-    p_latitude FLOAT,
-    p_longitude FLOAT,
-    p_horario TIME,
-    p_data DATE,
-    p_id_usuario CHAR(11),
-    p_id_publico_alvo INT,
-    p_id_categoria INT
-) RETURNS VOID LANGUAGE plpgsql AS $$
-DECLARE
-    v_id_endereco INT;
-    v_id_local INT;
-BEGIN
-    INSERT INTO endereco (referencia, latitude, longitude)
-    VALUES (p_referencia, p_latitude, p_longitude) RETURNING id_endereco INTO v_id_endereco;
-
-    INSERT INTO local (idendereco, nome)
-    VALUES (v_id_endereco, p_titulo) RETURNING id_local INTO v_id_local;
-
-    INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao)
-    VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao);
-END;
-$$;
-
-
--- ==========================================
--- EVENTS FOR DEMONSTRATION
+-- EVENTOS DE EXEMPLO
 -- ==========================================
 
 SELECT create_full_event(
@@ -245,6 +249,7 @@ SELECT create_full_event(
     4,                                                          -- p_id_publico_alvo (Comunidade acadêmica)
     2                                                           -- p_id_categoria (Carona)
 );
+
 SELECT create_full_event(
     'Carona para Taguatinga',                                                       
     'Indo para Taguatinga, vou com um vw gol cinza, 4 vagas no carro ainda.',
@@ -257,6 +262,7 @@ SELECT create_full_event(
     4,                                                          
     2                                                           
 );
+
 SELECT create_full_event(
     'HH da Aplicada',                               
     'HH da Aplicada, vai até às 21hrs. DJ ao vivo com funk anos 90!',        
@@ -269,6 +275,7 @@ SELECT create_full_event(
     1,                                                          
     1                                                          
 );
+
 SELECT create_full_event(
     'Vôlei',                               
     'Vôlei aqui para quem quiser participar, vai até às 18hrs. Não precisa trazer equipamento e nem ter experiência.',        
@@ -281,6 +288,7 @@ SELECT create_full_event(
     5,                                                          
     3                                                         
 );
+
 SELECT create_full_event(
     'Coffee Break no IQ',                              
     'Vai rolar um coffee break no IQ depois de um evento sobre química quântica. Só chegar no final do evento!',
@@ -293,3 +301,47 @@ SELECT create_full_event(
     4,                                                         
     5                                                           
 );
+
+SELECT create_full_event(
+    'Bar pós prova de OAC',                              
+    'Última prova do semestre, final da tortura. Quem quiser ir só aparecer',
+    'Aqui no Mendes, mesma quadra do moes',                                  
+    -15.7537,                                                
+    -47.8813,                                                  
+    '20:00:00',                                              
+    CURRENT_DATE,                                               
+    '44444444444',                                            
+    4,                                                         
+    1                                                          
+);
+
+
+-- ==========================================
+-- COMENTÁRIOS DE EXEMPLO
+-- ==========================================
+
+INSERT INTO comentario (idusuario, idevento, texto) VALUES
+('55555555555', 1, 'Opa, ainda tem vaga? Preciso ir pra rodoviária também!'),
+('11111111111', 1, 'Tem sim, só uma pessoa confirmou presença...'), 
+('11111111111', 3, 'A reitoria n tinha proibido dentro do ICC?'), 
+('33333333333', 3, 'Sim, porém liberaram de novo!'), 
+('44444444444', 4, 'Legal!! É semanal? Ou vai ter só esse agr?'),
+('44444444444', 2, 'Vão ir até qual parte de taguatinga?'),
+('22222222222', 2, 'Vamos chegar até tag centro mais ou menos'),
+('44444444444', 2, 'Ahh blz, vou ir tbm então'),
+('44444444444', 2, 'A gente pretende que seja semanal ou mensal pelo menos. Mas vai depender de quantas pessoas vão aparecer');
+
+-- ==========================================
+-- PARTICIPAÇÕES DE EXEMPLO
+-- ==========================================
+
+INSERT INTO participacao (idusuario, idevento, data_inscricao) VALUES
+('22222222222', 1, CURRENT_DATE),
+('33333333333', 1, CURRENT_DATE),
+('11111111111', 3, CURRENT_DATE),
+('22222222222', 3, CURRENT_DATE),
+('55555555555', 4, CURRENT_DATE),
+('77777777777', 4, CURRENT_DATE),
+('88888888888', 4, CURRENT_DATE),
+('99999999999', 4, CURRENT_DATE),
+('66666666666', 4, CURRENT_DATE);

@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 import folium
+import base64
 
 
 page_setup(page_name="home")
@@ -37,6 +38,34 @@ if "scroll_to_form" not in st.session_state:
 
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
+    # Exibe a foto de perfil se ela existir
+    if 'foto' in user_info and user_info['foto']:
+        # Converte os bytes da imagem para base64
+        b64_foto = base64.b64encode(user_info['foto']).decode()
+        st.markdown(f"""
+            <style>
+            /* Reduz o espaçamento no topo da barra lateral para a foto subir */
+            [data-testid="stSidebar"] > div:first-child {{
+                padding-top: 1rem;
+            }}
+            .profile-pic-container {{
+                display: flex;
+                justify-content: center;
+                margin-bottom: 1.5rem;
+            }}
+            .profile-pic {{
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 4px solid #FF4D8D;
+            }}
+            </style>
+            <div class="profile-pic-container">
+                <img src="data:image/png;base64,{b64_foto}" class="profile-pic">
+            </div>
+            """, unsafe_allow_html=True)
+
     st.markdown(f"""
     <div class="login-header">
         <h1 style="font-weight: bold;">
@@ -57,13 +86,6 @@ with st.sidebar:
     if st.button("Perfil", use_container_width=True):
         st.session_state.view_mode = "perfil"
 
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.write('')
-    st.divider()
     if st.button("Logout ⏻", help="Sair da Conta", key="logout_button", use_container_width=True):
         st.session_state.logged_in = False
         if "user_info" in st.session_state:
@@ -79,18 +101,15 @@ def fetch_eventos_from_db(filter_date):
     """Busca e formata os eventos da base de dados."""
     query = """
         SELECT
-            e.id_evento,
-            e.titulo,
-            c.nome AS categoria,
-            en.latitude AS lat,
-            e.horario,
-            en.longitude AS lon,
-            (SELECT COUNT(*) FROM participacao p WHERE p.idevento = e.id_evento) AS participantes
-        FROM evento e
-        JOIN categoria c ON e.idcategoria = c.id_categoria
-        JOIN local l ON e.idlocal = l.id_local
-        JOIN endereco en ON l.idendereco = en.id_endereco
-        WHERE e.data = %s;
+            id_evento,
+            titulo,
+            categoria_nome AS categoria,
+            latitude AS lat,
+            horario,
+            longitude AS lon,
+            participantes
+        FROM vw_eventos_detalhados
+        WHERE data = %s;
     """
     try:
         eventos_df = db_manager.execute_query(query, params=(filter_date,))
@@ -116,21 +135,9 @@ def fetch_form_data():
 def fetch_event_details(event_id):
     """Busca os detalhes completos de um evento específico."""
     query = """
-        SELECT
-            e.titulo,
-            e.descricao,
-            e.horario,
-            e.data,
-            u.nome AS nome_organizador,
-            e.idusuario,
-            e.idcategoria,
-            e.idpublico_alvo,
-            en.referencia
-        FROM evento e
-        JOIN local l ON e.idlocal = l.id_local
-        JOIN endereco en ON l.idendereco = en.id_endereco
-        JOIN usuario u ON e.idusuario = u.cpf
-        WHERE e.id_evento = %s;
+        SELECT *
+        FROM vw_eventos_detalhados
+        WHERE id_evento = %s;
     """
     try:
         details_df = db_manager.execute_query(query, params=(event_id,))
@@ -181,6 +188,8 @@ def show_event_dialog(event_details, event_id):
         st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
         st.write(f"**Descrição:** {event_details['descricao']}")
         st.write(f"**Ponto de Referência:** {event_details['referencia']}")
+        st.write(f"**Categoria:** {event_details['categoria_nome']}")
+        st.write(f"**Público-Alvo:** {event_details['publico_alvo_nome']}")
         st.write(f"**Data:** {event_details['data'].strftime('%d/%m/%Y')} às {event_details['horario'].strftime('%H:%M')}")
         
         if st.button("Participar", use_container_width=True):
@@ -378,13 +387,12 @@ if st.session_state.view_mode == "mapa":
             if botao_salvar:
                 if all([novo_titulo, nova_desc, nova_referencia, nova_data, novo_horario, nova_cat_nome, novo_publico_nome]):
                     try:
-                        # CORREÇÃO AQUI: Forçar explicitamente os tipos de dados para o Postgres não se confundir
                         params = [
-                            str(novo_titulo),
-                            str(nova_desc),
-                            str(nova_referencia),
-                            float(coordenadas_clicadas['lat']), # Assegura que é FLOAT
-                            float(coordenadas_clicadas['lng']), # Assegura que é FLOAT
+                            novo_titulo,
+                            nova_desc,
+                            nova_referencia,
+                            coordenadas_clicadas['lat'],
+                            coordenadas_clicadas['lng'],
                             novo_horario,
                             nova_data,
                             str(user_info['cpf']),
@@ -460,6 +468,9 @@ elif st.session_state.view_mode == "perfil":
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
         st.date_input("Data de Nascimento", value=user_info.get('data_nasc'), disabled=True)
 
+        # Campo para alterar a foto
+        nova_foto = st.file_uploader("Alterar Foto de Perfil (opcional)", type=['png', 'jpg', 'jpeg'])
+
         # Campos editáveis
         nome = st.text_input("Nome Completo", value=user_info.get('nome'))
         
@@ -481,6 +492,10 @@ elif st.session_state.view_mode == "perfil":
                 "iddepartamento": departamentos_map[dep_selecionado_nome],
                 "idtipo_usuario": tipos_usuario_map[tipo_selecionado_nome]
             }
+
+            # Adiciona a nova foto aos dados de atualização, se uma foi enviada
+            if nova_foto:
+                update_data["foto"] = nova_foto.getvalue()
 
             if nova_senha:
                 if nova_senha == confirma_nova_senha:

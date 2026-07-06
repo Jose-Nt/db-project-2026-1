@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 import folium
+import base64
 
 
 page_setup(page_name="home")
@@ -37,6 +38,30 @@ if "scroll_to_form" not in st.session_state:
 
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
+    # Exibe a foto de perfil se ela existir
+    if 'foto' in user_info and user_info['foto']:
+        # Converte os bytes da imagem para base64
+        b64_foto = base64.b64encode(user_info['foto']).decode()
+        st.markdown(f"""
+            <style>
+            .profile-pic-container {{
+                display: flex;
+                justify-content: center;
+                margin-bottom: 1.5rem;
+            }}
+            .profile-pic {{
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 4px solid #FF4D8D;
+            }}
+            </style>
+            <div class="profile-pic-container">
+                <img src="data:image/png;base64,{b64_foto}" class="profile-pic">
+            </div>
+            """, unsafe_allow_html=True)
+
     st.markdown(f"""
     <div class="login-header">
         <h1 style="font-weight: bold;">

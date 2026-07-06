@@ -81,6 +81,7 @@ CREATE TABLE tipo_usuario
  nome VARCHAR NOT NULL  
 ); 
 
+
 -- ==========================================
 -- CONSTRAINTS
 -- ==========================================
@@ -140,6 +141,7 @@ ADD CONSTRAINT fk_comentario_evento
 FOREIGN KEY (idevento)
 REFERENCES evento (id_evento);
 
+
 -- ==========================================
 -- INSERTS IN STATIC TABLES
 -- ==========================================
@@ -149,71 +151,51 @@ INSERT INTO publico_alvo (nome) VALUES
 ('Servidores'),
 ('Comunidade externa'),
 ('Comunidade acadêmica'),
-('Geral');
+('Livre');
 
 INSERT INTO categoria (nome) VALUES
 ('HH'),
-('Palestra'),
-('Workshop'),
 ('Carona'),
-('Coffee Break'),
 ('Esporte'),
+('Palestra'),
+('Coffee Break'),
+('Workshop'),
 ('Game'),
-('Geral');
+('Livre');
 
 INSERT INTO departamento (nome) VALUES
-('CIC'),
-('MAT'),
-('FT'),
-('IF'),
-('IB');
+('Instituto de Ciências Exatas'),
+('Instituto de Artes'),
+('Instituto de Ciência Política'),
+('Instituto de Ciências Biológicas'),
+('Instituto de Ciências Humanas'),
+('Instituto de Ciências Sociais'),
+('Instituto de Física'),
+('Instituto de Geociências'),
+('Instituto de Letras'),
+('Instituto de Psicologia'),
+('Instituto de Química'),
+('Instituto de Relações Internacionais');
 
 INSERT INTO tipo_usuario (nome) VALUES
-('Aluno'),
+('Aluno Graduação'),
+('Aluno Pós-Graduação'),
+('Professor'),
 ('Servidor'),
 ('Comunidade externa');
+
 
 -- ==========================================
 -- INSERTS FOR DEMONSTRATION
 -- ==========================================
 
--- Inserir usuários de exemplo
 INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha) VALUES
-('11111111111', 1, 1, 'Joao Aluno Teste', '2000-01-01', 'senha123'),
-('22222222222', 3, 2, 'Maria Servidora Teste', '1985-05-10', 'senha456');
+('11111111111', 1, 1, 'Joao Souza', '2000-01-01', 'senha123'),
+('22222222222', 4, 3, 'Ana Lima', '1995-05-10', 'senha123'),
+('33333333333', 1, 2, 'José Fonseca', '2000-05-10', 'senha123'),
+('44444444444', 2, 4, 'Maria Silva', '1985-05-10', 'senha123'),
+('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123');
 
--- Inserir endereços de exemplo
-INSERT INTO endereco (referencia, latitude, longitude) VALUES
-('Perto do ICC Norte', -15.7630, -47.8710),
-('Em frente a BCE', -15.7615, -47.8725),
-('Ao lado do RU', -15.7655, -47.8735),
-('Na grama da FAU', -15.7600, -47.8690),
-('No Patinódromo', -15.7670, -47.8700);
-
--- Inserir locais de exemplo (o nome do local será o mesmo do título do evento)
-INSERT INTO local (idendereco, nome) VALUES
-(1, 'Revisão de Cálculo I'),
-(2, 'Palestra sobre IA'),
-(3, 'Futsal Semanal'),
-(4, 'Happy Hour da Prograd'),
-(5, 'Grupo de Estudos de BD');
-
--- Inserir eventos de exemplo
--- Evento 1: Criado por Joao Aluno Teste
-INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
-('11111111111', 1, 1, 8, 'Revisão de Cálculo I', CURRENT_DATE, '14:00:00', 'Grupo para revisar a matéria para a P1 de Cálculo I.');
--- Evento 2: Criado por Maria Servidora Teste
-INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
-('22222222222', 2, 4, 2, 'Palestra sobre IA', CURRENT_DATE, '10:00:00', 'Palestra com especialista sobre o futuro da Inteligência Artificial.');
--- Evento 3: Criado por Joao Aluno Teste
-INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
-('11111111111', 3, 1, 6, 'Futsal Semanal', CURRENT_DATE + 1, '17:00:00', 'Futsal aberto para todos os níveis, venha jogar!');
--- Evento 4: Criado por Maria Servidora Teste
-INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
-('22222222222', 4, 2, 1, 'Happy Hour da Prograd', CURRENT_DATE + 2, '18:00:00', 'Confraternização dos servidores da Prograd.');
--- Evento 5: Criado por Joao Aluno Teste
-INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao) VALUES
-('11111111111', 5, 1, 8, 'Grupo de Estudos de BD', CURRENT_DATE, '16:00:00', 'Vamos nos juntar para estudar para o projeto de Banco de Dados.');
 
 -- ==========================================
 -- PROCEDURES / FUNCTIONS
@@ -245,3 +227,73 @@ BEGIN
     VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao);
 END;
 $$;
+
+
+-- ==========================================
+-- EVENTS FOR DEMONSTRATION
+-- ==========================================
+
+SELECT create_full_event(
+    'Carona para a rodoviária',                                 -- p_titulo
+    'Vou com um fiat argo branco, três vagas no carro',         -- p_descricao
+    'Entrada do ICC norte',                                     -- p_referencia
+    -15.7625,                                                   -- p_latitude
+    -47.8707,                                                   -- p_longitude
+    '19:00:00',                                                 -- p_horario
+    CURRENT_DATE,                                               -- p_data
+    '11111111111',                                              -- p_id_usuario
+    4,                                                          -- p_id_publico_alvo (Comunidade acadêmica)
+    2                                                           -- p_id_categoria (Carona)
+);
+
+SELECT create_full_event(
+    'Carona para Taguatinga',                                                       
+    'Indo para Taguatinga, vou com um vw gol cinza, 4 vagas no carro ainda.',
+    'Início do estacionamento do BSAN',                                                           
+    -15.7574,                                                  
+    -47.8707,                                                 
+    '19:00:00',                                                 
+    CURRENT_DATE,                                               
+    '22222222222',                                             
+    4,                                                          
+    2                                                           
+);
+
+SELECT create_full_event(
+    'HH da Aplicada',                               
+    'HH da Aplicada, vai até às 21hrs. DJ ao vivo com funk anos 90!',        
+    'Escadaria do ICC sul',                                    
+    -15.7641,                                                   
+    -47.8684,                                               
+    '18:00:00',                                                 
+    CURRENT_DATE,                                              
+    '33333333333',                                              
+    1,                                                          
+    1                                                          
+);
+
+SELECT create_full_event(
+    'Vôlei',                               
+    'Vôlei aqui para quem quiser participar, vai até às 18hrs. Não precisa trazer equipamento e nem ter experiência.',        
+    'Grama à direita da escadaria do ICC norte, sentido BCE.',                                    
+    -15.7626,                                                   
+    -47.8692,                                               
+    '16:00:00',                                                 
+    CURRENT_DATE,                                              
+    '44444444444',                                              
+    5,                                                          
+    3                                                         
+);
+
+SELECT create_full_event(
+    'Coffee Break no IQ',                              
+    'Vai rolar um coffee break no IQ depois de um evento sobre química quântica. Só chegar no final do evento!',
+    'Térreo do IQ, à direita da entrada.',                                  
+    -15.7686,                                                
+    -47.8649,                                                  
+    '20:00:00',                                              
+    CURRENT_DATE,                                               
+    '55555555555',                                            
+    4,                                                         
+    5                                                           
+);

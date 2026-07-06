@@ -3,6 +3,7 @@ import pandas as pd
 import psycopg2
 import os
 
+
 class PostgreSqlManager:
 
     def __init__(
@@ -107,6 +108,7 @@ class PostgreSqlManager:
         conn.commit()
         cursor.close()
         conn.close()
+
 
     def call_procedure(
         self,

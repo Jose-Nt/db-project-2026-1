@@ -206,6 +206,31 @@ $$;
 
 
 -- ==========================================
+-- TRIGGERS
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION check_event_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.data < CURRENT_DATE THEN
+        RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para uma data no passado.';
+    END IF;
+
+    IF NEW.data = CURRENT_DATE AND NEW.horario < CURRENT_TIME THEN
+        RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para um horário que já passou hoje.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_check_event_date
+BEFORE INSERT OR UPDATE ON evento
+FOR EACH ROW
+EXECUTE FUNCTION check_event_date();
+
+
+-- ==========================================
 -- INSERTS EM TABELAS ESTÁTICAS
 -- ==========================================
 

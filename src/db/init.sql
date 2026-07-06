@@ -146,7 +146,7 @@ REFERENCES evento (id_evento);
 -- PROCEDURES / FUNCTIONS
 -- ==========================================
 
-CREATE OR REPLACE FUNCTION create_full_event(
+CREATE OR REPLACE PROCEDURE create_full_event(
     p_titulo VARCHAR,
     p_descricao VARCHAR,
     p_referencia VARCHAR,
@@ -157,7 +157,7 @@ CREATE OR REPLACE FUNCTION create_full_event(
     p_id_usuario CHAR(11),
     p_id_publico_alvo INT,
     p_id_categoria INT
-) RETURNS VOID LANGUAGE plpgsql AS $$
+) LANGUAGE plpgsql AS $$
 DECLARE
     v_id_endereco INT;
     v_id_local INT;
@@ -226,10 +226,10 @@ INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha
 ('22222222222', 4, 3, 'Ana Lima', '1995-05-10', 'senha123'),
 ('33333333333', 1, 2, 'José Fonseca', '2000-05-10', 'senha123'),
 ('44444444444', 2, 4, 'Maria Silva', '1985-05-10', 'senha123'),
-('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123');
-('66666666666', 3, 1, 'Ricardo Rocha', '1975-05-10', 'senha123');
-('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123');
-('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123');
+('55555555555', 5, 5, 'Carlos Rocha', '1975-05-10', 'senha123'),
+('66666666666', 3, 1, 'Ricardo Rocha', '1975-05-10', 'senha123'),
+('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123'),
+('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123'),
 ('99999999999', 7, 5, 'Isabela Souza', '1975-05-10', 'senha123');
 
 
@@ -237,7 +237,7 @@ INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha
 -- EVENTOS DE EXEMPLO
 -- ==========================================
 
-SELECT create_full_event(
+CALL create_full_event(
     'Carona para a rodoviária',                                 -- p_titulo
     'Vou com um fiat argo branco, três vagas no carro',         -- p_descricao
     'Entrada do ICC norte',                                     -- p_referencia
@@ -250,7 +250,7 @@ SELECT create_full_event(
     2                                                           -- p_id_categoria (Carona)
 );
 
-SELECT create_full_event(
+CALL create_full_event(
     'Carona para Taguatinga',                                                       
     'Indo para Taguatinga, vou com um vw gol cinza, 4 vagas no carro ainda.',
     'Início do estacionamento do BSAN',                                                           
@@ -263,7 +263,7 @@ SELECT create_full_event(
     2                                                           
 );
 
-SELECT create_full_event(
+CALL create_full_event(
     'HH da Aplicada',                               
     'HH da Aplicada, vai até às 21hrs. DJ ao vivo com funk anos 90!',        
     'Escadaria do ICC sul',                                    
@@ -276,7 +276,7 @@ SELECT create_full_event(
     1                                                          
 );
 
-SELECT create_full_event(
+CALL create_full_event(
     'Vôlei',                               
     'Vôlei aqui para quem quiser participar, vai até às 18hrs. Não precisa trazer equipamento e nem ter experiência.',        
     'Grama à direita da escadaria do ICC norte, sentido BCE.',                                    
@@ -289,7 +289,7 @@ SELECT create_full_event(
     3                                                         
 );
 
-SELECT create_full_event(
+CALL create_full_event(
     'Coffee Break no IQ',                              
     'Vai rolar um coffee break no IQ depois de um evento sobre química quântica. Só chegar no final do evento!',
     'Térreo do IQ, à direita da entrada.',                                  
@@ -302,7 +302,7 @@ SELECT create_full_event(
     5                                                           
 );
 
-SELECT create_full_event(
+CALL create_full_event(
     'Bar pós prova de OAC',                              
     'Última prova do semestre, final da tortura. Quem quiser ir só aparecer',
     'Aqui no Mendes, mesma quadra do moes',                                  
@@ -322,14 +322,15 @@ SELECT create_full_event(
 
 INSERT INTO comentario (idusuario, idevento, texto) VALUES
 ('55555555555', 1, 'Opa, ainda tem vaga? Preciso ir pra rodoviária também!'),
-('11111111111', 1, 'Tem sim, só uma pessoa confirmou presença...'), 
+('11111111111', 1, 'Tem sim, só duas pessoas confirmaram presença...'), 
 ('11111111111', 3, 'A reitoria n tinha proibido dentro do ICC?'), 
 ('33333333333', 3, 'Sim, porém liberaram de novo!'), 
 ('44444444444', 4, 'Legal!! É semanal? Ou vai ter só esse agr?'),
 ('44444444444', 2, 'Vão ir até qual parte de taguatinga?'),
 ('22222222222', 2, 'Vamos chegar até tag centro mais ou menos'),
 ('44444444444', 2, 'Ahh blz, vou ir tbm então'),
-('44444444444', 2, 'A gente pretende que seja semanal ou mensal pelo menos. Mas vai depender de quantas pessoas vão aparecer');
+('44444444444', 4, 'A gente pretende que seja semanal ou mensal pelo menos. Mas vai depender de quantas pessoas vão aparecer');
+
 
 -- ==========================================
 -- PARTICIPAÇÕES DE EXEMPLO

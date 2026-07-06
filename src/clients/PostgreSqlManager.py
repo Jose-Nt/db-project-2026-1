@@ -116,13 +116,18 @@ class PostgreSqlManager:
         params: list | None = None
     ) -> None:
         """
-        Calls a PostgreSQL stored procedure/function.
+        Calls a PostgreSQL stored procedure using the CALL statement.
         """
         conn = self.connect_to_db()
         cursor = conn.cursor()
 
         try:
-            cursor.callproc(proc_name, params)
+            placeholders = sql.SQL(', ').join(sql.Placeholder() * len(params))
+            query = sql.SQL("CALL {proc_name}({placeholders})").format(
+                proc_name=sql.Identifier(proc_name),
+                placeholders=placeholders
+            )
+            cursor.execute(query, params)
             conn.commit()
         finally:
             cursor.close()

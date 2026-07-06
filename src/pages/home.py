@@ -384,13 +384,12 @@ if st.session_state.view_mode == "mapa":
             if botao_salvar:
                 if all([novo_titulo, nova_desc, nova_referencia, nova_data, novo_horario, nova_cat_nome, novo_publico_nome]):
                     try:
-                        # CORREÇÃO AQUI: Forçar explicitamente os tipos de dados para o Postgres não se confundir
                         params = [
-                            str(novo_titulo),
-                            str(nova_desc),
-                            str(nova_referencia),
-                            float(coordenadas_clicadas['lat']), # Assegura que é FLOAT
-                            float(coordenadas_clicadas['lng']), # Assegura que é FLOAT
+                            novo_titulo,
+                            nova_desc,
+                            nova_referencia,
+                            coordenadas_clicadas['lat'],
+                            coordenadas_clicadas['lng'],
                             novo_horario,
                             nova_data,
                             str(user_info['cpf']),

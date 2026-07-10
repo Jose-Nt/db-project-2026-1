@@ -16,38 +16,28 @@ if not st.session_state.get("logged_in", False):
     st.switch_page("pages/login.py")
     st.stop()
 
-# Inicializa o modo de visualização no estado da sessão, se não existir
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "mapa"
 
-# Inicializa o estado para controlar o diálogo do evento
 if "show_event_dialog_id" not in st.session_state:
     st.session_state.show_event_dialog_id = None
 
-# Novo estado para rastrear o último clique processado e evitar reaberturas
 if "last_processed_click" not in st.session_state:
     st.session_state.last_processed_click = None
 
-# Novo estado para controlar o scroll automático ao criar um evento
 if "last_map_create_click" not in st.session_state:
     st.session_state.last_map_create_click = None
 
-# Flag para controlar a execução do script de scroll
 if "scroll_to_form" not in st.session_state:
     st.session_state.scroll_to_form = False
 
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
-    # Exibe a foto de perfil se ela existir
     if 'foto' in user_info and user_info['foto']:
-        # Converte os bytes da imagem para base64
         b64_foto = base64.b64encode(user_info['foto']).decode()
         st.markdown(f"""
-            <style>
-            /* Reduz o espaçamento no topo da barra lateral para a foto subir */
-            [data-testid="stSidebar"] > div:first-child {{
-                padding-top: 1rem;
-            }}
+            <style>            [data-testid="stSidebar"] > div:first-child {{
+                padding-top: 1rem;            }}
             .profile-pic-container {{
                 display: flex;
                 justify-content: center;
@@ -78,7 +68,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.divider()
 
-    # Botões para alternar a visualização
     if st.button("Mapa de eventos", use_container_width=True):
         st.session_state.view_mode = "mapa"
     if st.button("Lista de eventos", use_container_width=True):
@@ -93,12 +82,10 @@ with st.sidebar:
         st.switch_page("pages/login.py")
 
 
-# --- Lógica de Base de Dados ---
 db_manager = PostgreSqlManager()
 
 @st.cache_data(ttl=30)
 def fetch_eventos_from_db(filter_date):
-    """Busca e formata os eventos da base de dados."""
     query = """
         SELECT
             id_evento,
@@ -120,7 +107,6 @@ def fetch_eventos_from_db(filter_date):
 
 @st.cache_data(ttl=3600)
 def fetch_form_data():
-    """Busca dados para preencher os formulários (categorias, publicos)."""
     try:
         categorias_df = db_manager.execute_query("SELECT id_categoria, nome FROM categoria")
         publicos_df = db_manager.execute_query("SELECT id_publico, nome FROM publico_alvo")
@@ -133,7 +119,6 @@ def fetch_form_data():
 
 @st.cache_data(ttl=30)
 def fetch_event_details(event_id):
-    """Busca os detalhes completos de um evento específico."""
     query = """
         SELECT *
         FROM vw_eventos_detalhados
@@ -150,7 +135,6 @@ def fetch_event_details(event_id):
 
 @st.cache_data(ttl=15)
 def fetch_event_comments(event_id):
-    """Busca os comentários de um evento, juntando o nome do autor."""
     query = """
         SELECT
             c.texto,
@@ -169,11 +153,8 @@ def fetch_event_comments(event_id):
 
 @st.dialog("Detalhes do Evento")
 def show_event_dialog(event_details, event_id):
-    """Exibe os detalhes de um evento num diálogo nativo do Streamlit."""
-    # Verifica se o usuário atual é o criador do evento
     is_owner = event_details['idusuario'] == user_info['cpf']
 
-    # Define as abas a serem exibidas
     tab_titles = ["Informações", "Comentários"]
     if is_owner:
         tab_titles.append("Gerenciar Evento")
@@ -194,7 +175,6 @@ def show_event_dialog(event_details, event_id):
         
         if st.button("Participar", use_container_width=True):
             try:
-                # Verifica se o utilizador já participa
                 check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
                 already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], event_id)).empty
 
@@ -208,7 +188,7 @@ def show_event_dialog(event_details, event_id):
                     }])
                     db_manager.insert_data_into_table(participacao_df, "participacao")
                     st.success(f"Presença confirmada em '{event_details['titulo']}'!")
-                    st.cache_data.clear() # Limpa a cache para forçar a releitura dos dados
+                    st.cache_data.clear()
             except psycopg2.Error as e:
                 st.error(f"Erro ao registar participação: {e}")
 
@@ -216,7 +196,6 @@ def show_event_dialog(event_details, event_id):
         st.subheader("💬 Comentários")
         comments = fetch_event_comments(event_id)
         
-        # Área para exibir comentários existentes
         with st.container(height=200):
             if not comments:
                 st.info("Ainda não há comentários. Seja o primeiro a comentar!")
@@ -224,8 +203,6 @@ def show_event_dialog(event_details, event_id):
                 st.markdown(f"**{comment['autor'].split()[0]}:** {comment['texto']}")
         
         st.divider()
-
-        # Área para adicionar um novo comentário
         new_comment = st.text_area("Deixe seu comentário:", key=f"comment_input_{event_id}")
         if st.button("Comentar", key=f"comment_btn_{event_id}", use_container_width=True):
             if new_comment:
@@ -289,7 +266,6 @@ def show_event_dialog(event_details, event_id):
                 st.warning("Atenção: Esta ação é irreversível e excluirá o evento, bem como todos os comentários e participações associadas.", icon="⚠️")
                 if st.form_submit_button("🚨 Excluir Evento Permanentemente", use_container_width=True):
                     try:
-                        # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
                         db_manager.execute_non_query("DELETE FROM participacao WHERE idevento = %s", (event_id,))
                         db_manager.execute_non_query("DELETE FROM comentario WHERE idevento = %s", (event_id,))
                         db_manager.delete_rows_by_condition("evento", "id_evento", event_id)
@@ -300,10 +276,8 @@ def show_event_dialog(event_details, event_id):
                     except psycopg2.Error as e:
                         st.error(f"Erro ao excluir o evento: {e}")
 
-# Busca os dados que podem ser usados em múltiplas visualizações (mapa, perfil)
 categorias_df, publicos_df, departamentos_df, tipos_usuario_df = fetch_form_data()
 
-# --- Renderização Condicional da Página ---
 
 if st.session_state.view_mode == "mapa":
     st.title("UniEvents - Darcy Ribeiro")
@@ -317,7 +291,6 @@ if st.session_state.view_mode == "mapa":
 
     UNB_LAT, UNB_LON = -15.7635, -47.8708
 
-    # --- Renderização do Mapa ---
     st.write("📍 Explore ou Clique no Mapa para Criar um Evento")
 
     m = folium.Map(
@@ -341,30 +314,24 @@ if st.session_state.view_mode == "mapa":
 
     current_click = mapa_interativo.get("last_object_clicked")
 
-    # Verifica se houve um clique NOVO e se ele é diferente do último que já processamos
     if current_click and current_click != st.session_state.last_processed_click:
-        # Armazena o clique atual para que não seja processado novamente em um rerun
         st.session_state.last_processed_click = current_click
         
         clicked_lat, clicked_lon = current_click['lat'], current_click['lng']
         selected_event = next((ev for ev in eventos if ev['lat'] == clicked_lat and ev['lon'] == clicked_lon), None)
         if selected_event:
-            # Define o ID do evento para ser exibido
             st.session_state.show_event_dialog_id = selected_event['id_evento']
 
-    # Mostra o diálogo se um ID de evento estiver definido no estado da sessão
     if st.session_state.show_event_dialog_id:
         event_details = fetch_event_details(st.session_state.show_event_dialog_id)
         if event_details:
             show_event_dialog(event_details, st.session_state.show_event_dialog_id)
-        st.session_state.show_event_dialog_id = None # Limpa o ID para que o diálogo não reabra sozinho
+        st.session_state.show_event_dialog_id = None
     
     st.divider()
 
-    # --- Painel de Ações (Criar Evento ou Instruções) ---
     coordenadas_clicadas = mapa_interativo.get("last_clicked")
 
-    # 1. Detecta um novo clique no mapa e define a flag para rolar a página
     if coordenadas_clicadas and coordenadas_clicadas != st.session_state.get("last_map_create_click"):
         st.session_state.last_map_create_click = coordenadas_clicadas
         st.session_state.scroll_to_form = True
@@ -410,9 +377,7 @@ if st.session_state.view_mode == "mapa":
                 else: 
                     st.warning("Por favor, preencha todos os campos do evento.")
         
-        # 2. Verifica a flag APÓS o formulário ser renderizado
         if st.session_state.scroll_to_form:
-            # Injeta o JavaScript para rolar até a âncora
             st.components.v1.html(
                 """
                 <script>
@@ -421,7 +386,7 @@ if st.session_state.view_mode == "mapa":
                 """,
                 height=0
             )
-            st.session_state.scroll_to_form = False # 3. Reseta a flag
+            st.session_state.scroll_to_form = False
     else:
         st.subheader("ℹ️ Como funciona?")
         st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no ícone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
@@ -458,7 +423,6 @@ elif st.session_state.view_mode == "perfil":
     departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
     tipos_usuario_map = {row['nome']: row['id_tipo_usuario'] for _, row in tipos_usuario_df.iterrows()}
     
-    # Inverte os mapas para encontrar o nome a partir do ID
     id_to_departamento = {v: k for k, v in departamentos_map.items()}
     id_to_tipo_usuario = {v: k for k, v in tipos_usuario_map.items()}
 
@@ -466,14 +430,11 @@ elif st.session_state.view_mode == "perfil":
     with st.form("form_update_profile"):
         st.subheader("Dados Pessoais")
 
-        # Campos não editáveis
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
         st.date_input("Data de Nascimento", value=user_info.get('data_nasc'), disabled=True)
 
-        # Campo para alterar a foto
         nova_foto = st.file_uploader("Alterar Foto de Perfil (opcional)", type=['png', 'jpg', 'jpeg'])
 
-        # Campos editáveis
         nome = st.text_input("Nome Completo", value=user_info.get('nome'))
         
         dep_atual_nome = id_to_departamento.get(user_info.get('iddepartamento'))
@@ -495,7 +456,6 @@ elif st.session_state.view_mode == "perfil":
                 "idtipo_usuario": tipos_usuario_map[tipo_selecionado_nome]
             }
 
-            # Adiciona a nova foto aos dados de atualização, se uma foi enviada
             if nova_foto:
                 update_data["foto"] = nova_foto.getvalue()
 
@@ -514,7 +474,6 @@ elif st.session_state.view_mode == "perfil":
                 db_manager.update_table("usuario", update_data, "cpf = %s", (user_info['cpf'],))
                 st.success("Perfil atualizado com sucesso! Será redirecionado para a página de início de sessão.")
                 
-                # Limpa a sessão e redireciona para o login
                 st.session_state.logged_in = False
                 del st.session_state.user_info
                 st.switch_page("pages/login.py")

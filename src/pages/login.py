@@ -1,10 +1,11 @@
 from clients.PostgreSqlManager import PostgreSqlManager
+import streamlit.components.v1 as components
 from services.utils import page_setup
 from datetime import date
 import streamlit as st
 import pandas as pd
 import psycopg2
-import streamlit.components.v1 as components
+
 
 page_setup(page_name="login")
 
@@ -115,7 +116,6 @@ with center_col:
                 except psycopg2.Error as e:
                     st.error(f"Não foi possível carregar os dados para o formulário: {e}")
 
-# --- SCRIPT PARA O ENTER PULAR CAMPOS ---
 components.html("""
     <script>
         const doc = window.parent.document;

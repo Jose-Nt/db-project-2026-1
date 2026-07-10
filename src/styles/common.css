@@ -1,4 +1,3 @@
-/* Oculta elementos padrão do Streamlit para uma interface mais limpa */
 [data-testid="stSidebarNav"] {
     display: none;
 }

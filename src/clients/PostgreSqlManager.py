@@ -133,6 +133,25 @@ class PostgreSqlManager:
             cursor.close()
             conn.close()
 
+
+    def execute_non_query(
+        self,
+        query: str,
+        params: tuple | None = None
+    ) -> None:
+        """
+        Executes a SQL statement that does not return a result set (e.g., INSERT, UPDATE, DELETE).
+        """
+        conn = self.connect_to_db()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, params)
+            conn.commit()
+        finally:
+            cursor.close()
+            conn.close()
+
     
     def delete_rows_by_condition(
         self,

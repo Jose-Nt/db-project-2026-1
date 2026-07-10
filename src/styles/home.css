@@ -2,12 +2,10 @@
     padding-top: 0.5rem;
 }
 
-/* Define uma largura fixa para a sidebar */
 [data-testid="stSidebar"] {
     width: 320px !important;
 }
 
-/* Estilo customizado para TODOS os botões (Removemos a restrição do stAppViewContainer) */
 .stButton > button {
     background-color: #FF4D8D !important;
     color: white !important;
@@ -15,12 +13,10 @@
     transition: all 0.3s ease;
 }
 
-/* Força a cor do texto para branco no estado normal */
 .stButton > button p {
     color: white !important;
 }
 
-/* Efeito de Hover e de Clique (Focus/Active) - Resolve o bug de desaparecer o texto */
 .stButton > button:hover,
 .stButton > button:focus,
 .stButton > button:active {
@@ -28,14 +24,12 @@
     border-color: #FF4D8D !important;
 }
 
-/* Inverte a cor do texto nestes estados para ficar visível */
 .stButton > button:hover p,
 .stButton > button:focus p,
 .stButton > button:active p {
     color: #FF4D8D !important;
 }
 
-/* Estiliza o botão de logout para parecer apenas um ícone clicável */
 button[key="logout_button"] {
     background-color: transparent !important;
     border: none !important;

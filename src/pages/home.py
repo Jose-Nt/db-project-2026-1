@@ -285,18 +285,20 @@ def show_event_dialog(event_details, event_id):
 
             st.divider()
             st.subheader("Exclusão de evento")
-            if st.button("🚨 Excluir Evento", use_container_width=True):
-                try:
-                    # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
-                    db_manager.execute_non_query("DELETE FROM participacao WHERE idevento = %s", (event_id,))
-                    db_manager.execute_non_query("DELETE FROM comentario WHERE idevento = %s", (event_id,))
-                    db_manager.delete_rows_by_condition("evento", "id_evento", event_id)
-                    
-                    st.success("Evento excluído com sucesso!")
-                    st.cache_data.clear()
-                    st.rerun()
-                except psycopg2.Error as e:
-                    st.error(f"Erro ao excluir o evento: {e}")
+            with st.form(f"form_delete_{event_id}"):
+                st.warning("Atenção: Esta ação é irreversível e excluirá o evento, bem como todos os comentários e participações associadas.", icon="⚠️")
+                if st.form_submit_button("🚨 Excluir Evento Permanentemente", use_container_width=True):
+                    try:
+                        # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
+                        db_manager.execute_non_query("DELETE FROM participacao WHERE idevento = %s", (event_id,))
+                        db_manager.execute_non_query("DELETE FROM comentario WHERE idevento = %s", (event_id,))
+                        db_manager.delete_rows_by_condition("evento", "id_evento", event_id)
+                        
+                        st.success("Evento excluído com sucesso!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except psycopg2.Error as e:
+                        st.error(f"Erro ao excluir o evento: {e}")
 
 # Busca os dados que podem ser usados em múltiplas visualizações (mapa, perfil)
 categorias_df, publicos_df, departamentos_df, tipos_usuario_df = fetch_form_data()

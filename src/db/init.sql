@@ -217,10 +217,6 @@ BEGIN
         RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para uma data no passado.';
     END IF;
 
-    IF NEW.data = CURRENT_DATE AND NEW.horario < CURRENT_TIME THEN
-        RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para um horário que já passou hoje.';
-    END IF;
-
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -295,16 +291,16 @@ INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha
 -- ==========================================
 
 CALL create_full_event(
-    'Carona para a rodoviária',                                 -- p_titulo
-    'Vou com um fiat argo branco, três vagas no carro',         -- p_descricao
-    'Entrada do ICC norte',                                     -- p_referencia
-    -15.7625,                                                   -- p_latitude
-    -47.8707,                                                   -- p_longitude
-    '19:00:00',                                                 -- p_horario
-    CURRENT_DATE,                                               -- p_data
-    '11111111111',                                              -- p_id_usuario
-    4,                                                          -- p_id_publico_alvo (Comunidade acadêmica)
-    2                                                           -- p_id_categoria (Carona)
+    'Carona para a rodoviária',                                
+    'Vou com um fiat argo branco, três vagas no carro',         
+    'Entrada do ICC norte',                                     
+    -15.7625,                                                
+    -47.8707,                                                   
+    '19:00:00',                                                
+    CURRENT_DATE,  
+    '11111111111',                                            
+    4,
+    2
 );
 
 CALL create_full_event(
@@ -313,11 +309,11 @@ CALL create_full_event(
     'Início do estacionamento do BSAN',                                                           
     -15.7574,                                                  
     -47.8707,                                                 
-    '19:00:00',                                                 
-    CURRENT_DATE,                                               
+    '19:00:00',                                                  
+    CURRENT_DATE,  
     '22222222222',                                             
-    4,                                                          
-    2                                                           
+    4,
+    2
 );
 
 CALL create_full_event(
@@ -326,11 +322,11 @@ CALL create_full_event(
     'Escadaria do ICC sul',                                    
     -15.7641,                                                   
     -47.8684,                                               
-    '18:00:00',                                                 
-    CURRENT_DATE,                                              
+    '18:00:00',                                                  
+    CURRENT_DATE, 
     '33333333333',                                              
-    1,                                                          
-    1                                                          
+    1,
+    1
 );
 
 CALL create_full_event(
@@ -339,11 +335,11 @@ CALL create_full_event(
     'Grama à direita da escadaria do ICC norte, sentido BCE.',                                    
     -15.7626,                                                   
     -47.8692,                                               
-    '16:00:00',                                                 
-    CURRENT_DATE,                                              
+    '16:00:00',                                                  
+    CURRENT_DATE, 
     '44444444444',                                              
-    5,                                                          
-    3                                                         
+    5,
+    3
 );
 
 CALL create_full_event(
@@ -352,11 +348,11 @@ CALL create_full_event(
     'Térreo do IQ, à direita da entrada.',                                  
     -15.7686,                                                
     -47.8649,                                                  
-    '20:00:00',                                              
-    CURRENT_DATE,                                               
+    '20:00:00',                                               
+    CURRENT_DATE, 
     '55555555555',                                            
-    4,                                                         
-    5                                                           
+    4,
+    5
 );
 
 CALL create_full_event(
@@ -365,11 +361,11 @@ CALL create_full_event(
     'Aqui no Mendes, mesma quadra do moes',                                  
     -15.7537,                                                
     -47.8813,                                                  
-    '20:00:00',                                              
-    CURRENT_DATE,                                               
+    '20:00:00',                                               
+    CURRENT_DATE, 
     '44444444444',                                            
-    4,                                                         
-    1                                                          
+    4,
+    1
 );
 
 

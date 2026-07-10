@@ -2,7 +2,7 @@
 
 UniEvents é uma aplicação web desenvolvida com Streamlit e Python para o gerenciamento de eventos no campus universitário Darcy Ribeiro. A plataforma permite que os usuários visualizem, criem e participem de eventos, promovendo a interação dentro da comunidade acadêmica.
 
-O arquivo de geração do banco de dados está em: [init.sql](src/db/init.sql)
+O arquivo de geração do banco de dados está em: [init.sql](src/db/init.sql) (src/db/init.sql)
 
 ## Funcionalidades
 

@@ -1,49 +1,6 @@
-###VIEW
-vw_eventos_detalhados
-
-###PROCEDURE NO PRÓPRIO INIT.SQL
-
-###EXECUTAR NO BASH:
+EXECUTAR NO BASH:
 docker compose down -v
 docker compose up --build
 
-###ACESSAR:
+ACESSAR:
 http://localhost:8501/
-
-###ENTRAR NO BANCO
-docker exec -it postgres-db bash
-psql -U postgres -d projectbd
-
-###SAIR DE VIEW DE TABELA GRANDE:
-q
-
-###LISTAR TABELAS
-\dt
-
-###LISTAR VIEWS
-\dv
-
-###LISTAR TRIGGERS
-SELECT
-    event_object_table AS tabela,
-    trigger_name,
-    event_manipulation AS evento,
-    action_timing AS momento
-FROM information_schema.triggers
-ORDER BY event_object_table, trigger_name;
-
-###LISTAR PROCEDURES
-SELECT
-    routine_schema,
-    routine_name
-FROM information_schema.routines
-WHERE routine_type = 'PROCEDURE'
-ORDER BY routine_schema, routine_name;
-
-###LISTAR FUNCTIONS
-SELECT
-    routine_schema,
-    routine_name
-FROM information_schema.routines
-WHERE routine_type = 'FUNCTION'
-ORDER BY routine_schema, routine_name;

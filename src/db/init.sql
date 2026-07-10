@@ -30,8 +30,7 @@ CREATE TABLE evento
  titulo VARCHAR NOT NULL,  
  data DATE NOT NULL,  
  horario TIME NOT NULL,  
- descricao VARCHAR NOT NULL,
- limite_participantes INT NOT NULL DEFAULT 50
+ descricao VARCHAR NOT NULL  
 ); 
 
 CREATE TABLE participacao 
@@ -156,7 +155,6 @@ SELECT
     e.data,
     e.horario,
     e.idusuario,
-    e.limite_participantes,
     u.nome AS nome_organizador,
     e.idcategoria,
     cat.nome AS categoria_nome,
@@ -177,7 +175,7 @@ JOIN endereco en ON l.idendereco = en.id_endereco;
 
 
 -- ==========================================
--- PROCEDURES
+-- PROCEDURES / FUNCTIONS
 -- ==========================================
 
 CREATE OR REPLACE PROCEDURE create_full_event(
@@ -190,13 +188,11 @@ CREATE OR REPLACE PROCEDURE create_full_event(
     p_data DATE,
     p_id_usuario CHAR(11),
     p_id_publico_alvo INT,
-    p_id_categoria INT,
-    p_limite_participantes INT
+    p_id_categoria INT
 ) LANGUAGE plpgsql AS $$
 DECLARE
     v_id_endereco INT;
     v_id_local INT;
-    v_id_evento INT;
 BEGIN
     INSERT INTO endereco (referencia, latitude, longitude)
     VALUES (p_referencia, p_latitude, p_longitude) RETURNING id_endereco INTO v_id_endereco;
@@ -204,14 +200,8 @@ BEGIN
     INSERT INTO local (idendereco, nome)
     VALUES (v_id_endereco, p_titulo) RETURNING id_local INTO v_id_local;
 
-    -- Cria o evento e pega o ID gerado
-    INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao, limite_participantes)
-    VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao, p_limite_participantes)
-    RETURNING id_evento INTO v_id_evento;
-
-    -- MÁGICA AQUI: O criador do evento é inserido automaticamente como o primeiro participante!
-    INSERT INTO participacao (idusuario, idevento, data_inscricao)
-    VALUES (p_id_usuario, v_id_evento, CURRENT_DATE);
+    INSERT INTO evento (idusuario, idlocal, idpublico_alvo, idcategoria, titulo, data, horario, descricao)
+    VALUES (p_id_usuario, v_id_local, p_id_publico_alvo, p_id_categoria, p_titulo, p_data, p_horario, p_descricao);
 END;
 $$;
 
@@ -225,6 +215,10 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.data < CURRENT_DATE THEN
         RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para uma data no passado.';
+    END IF;
+
+    IF NEW.data = CURRENT_DATE AND NEW.horario < CURRENT_TIME THEN
+        RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para um horário que já passou hoje.';
     END IF;
 
     RETURN NEW;
@@ -294,3 +288,118 @@ INSERT INTO usuario (cpf, iddepartamento, idtipo_usuario, nome, data_nasc, senha
 ('77777777777', 4, 1, 'Julia Silva', '1975-05-10', 'senha123', E'\\000'),
 ('88888888888', 1, 1, 'Samara Feitosa', '1975-05-10', 'senha123', E'\\000'),
 ('99999999999', 7, 5, 'Isabela Souza', '1975-05-10', 'senha123', E'\\000');
+
+
+-- ==========================================
+-- EVENTOS DE EXEMPLO
+-- ==========================================
+
+CALL create_full_event(
+    'Carona para a rodoviária',                                 -- p_titulo
+    'Vou com um fiat argo branco, três vagas no carro',         -- p_descricao
+    'Entrada do ICC norte',                                     -- p_referencia
+    -15.7625,                                                   -- p_latitude
+    -47.8707,                                                   -- p_longitude
+    '19:00:00',                                                 -- p_horario
+    CURRENT_DATE,                                               -- p_data
+    '11111111111',                                              -- p_id_usuario
+    4,                                                          -- p_id_publico_alvo (Comunidade acadêmica)
+    2                                                           -- p_id_categoria (Carona)
+);
+
+CALL create_full_event(
+    'Carona para Taguatinga',                                                       
+    'Indo para Taguatinga, vou com um vw gol cinza, 4 vagas no carro ainda.',
+    'Início do estacionamento do BSAN',                                                           
+    -15.7574,                                                  
+    -47.8707,                                                 
+    '19:00:00',                                                 
+    CURRENT_DATE,                                               
+    '22222222222',                                             
+    4,                                                          
+    2                                                           
+);
+
+CALL create_full_event(
+    'HH da Aplicada',                               
+    'HH da Aplicada, vai até às 21hrs. DJ ao vivo com funk anos 90!',        
+    'Escadaria do ICC sul',                                    
+    -15.7641,                                                   
+    -47.8684,                                               
+    '18:00:00',                                                 
+    CURRENT_DATE,                                              
+    '33333333333',                                              
+    1,                                                          
+    1                                                          
+);
+
+CALL create_full_event(
+    'Vôlei',                               
+    'Vôlei aqui para quem quiser participar, vai até às 18hrs. Não precisa trazer equipamento e nem ter experiência.',        
+    'Grama à direita da escadaria do ICC norte, sentido BCE.',                                    
+    -15.7626,                                                   
+    -47.8692,                                               
+    '16:00:00',                                                 
+    CURRENT_DATE,                                              
+    '44444444444',                                              
+    5,                                                          
+    3                                                         
+);
+
+CALL create_full_event(
+    'Coffee Break no IQ',                              
+    'Vai rolar um coffee break no IQ depois de um evento sobre química quântica. Só chegar no final do evento!',
+    'Térreo do IQ, à direita da entrada.',                                  
+    -15.7686,                                                
+    -47.8649,                                                  
+    '20:00:00',                                              
+    CURRENT_DATE,                                               
+    '55555555555',                                            
+    4,                                                         
+    5                                                           
+);
+
+CALL create_full_event(
+    'Bar pós prova de OAC',                              
+    'Última prova do semestre, final da tortura. Quem quiser ir só aparecer',
+    'Aqui no Mendes, mesma quadra do moes',                                  
+    -15.7537,                                                
+    -47.8813,                                                  
+    '20:00:00',                                              
+    CURRENT_DATE,                                               
+    '44444444444',                                            
+    4,                                                         
+    1                                                          
+);
+
+
+-- ==========================================
+-- COMENTÁRIOS DE EXEMPLO
+-- ==========================================
+
+INSERT INTO comentario (idusuario, idevento, texto) VALUES
+('55555555555', 1, 'Opa, ainda tem vaga? Preciso ir pra rodoviária também!'),
+('11111111111', 1, 'Tem sim, só duas pessoas confirmaram presença...'), 
+('11111111111', 3, 'A reitoria n tinha proibido dentro do ICC?'), 
+('33333333333', 3, 'Sim, porém liberaram de novo!'), 
+('44444444444', 4, 'Legal!! É semanal? Ou vai ter só esse agr?'),
+('44444444444', 2, 'Vão ir até qual parte de taguatinga?'),
+('22222222222', 2, 'Vamos chegar até tag centro mais ou menos'),
+('44444444444', 2, 'Ahh blz, vou ir tbm então'),
+('44444444444', 4, 'A gente pretende que seja semanal ou mensal pelo menos. Mas vai depender de quantas pessoas vão aparecer');
+
+
+-- ==========================================
+-- PARTICIPAÇÕES DE EXEMPLO
+-- ==========================================
+
+INSERT INTO participacao (idusuario, idevento, data_inscricao) VALUES
+('22222222222', 1, CURRENT_DATE),
+('33333333333', 1, CURRENT_DATE),
+('11111111111', 3, CURRENT_DATE),
+('22222222222', 3, CURRENT_DATE),
+('55555555555', 4, CURRENT_DATE),
+('77777777777', 4, CURRENT_DATE),
+('88888888888', 4, CURRENT_DATE),
+('99999999999', 4, CURRENT_DATE),
+('66666666666', 4, CURRENT_DATE);

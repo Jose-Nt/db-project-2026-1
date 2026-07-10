@@ -20,6 +20,10 @@ if not st.session_state.get("logged_in", False):
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "mapa"
 
+# Inicializa o estado para controlar o diálogo do evento
+if "show_event_dialog_id" not in st.session_state:
+    st.session_state.show_event_dialog_id = None
+
 # Novo estado para rastrear o último clique processado e evitar reaberturas
 if "last_processed_click" not in st.session_state:
     st.session_state.last_processed_click = None
@@ -31,10 +35,6 @@ if "last_map_create_click" not in st.session_state:
 # Flag para controlar a execução do script de scroll
 if "scroll_to_form" not in st.session_state:
     st.session_state.scroll_to_form = False
-
-# Inicializa o ID do evento a ser mostrado no diálogo
-if "show_event_dialog_id" not in st.session_state:
-    st.session_state.show_event_dialog_id = None
 
 user_info = st.session_state.get("user_info", {})
 with st.sidebar:
@@ -93,7 +93,7 @@ with st.sidebar:
         st.switch_page("pages/login.py")
 
 
-# --- Lógica de Banco de Dados ---
+# --- Lógica de Base de Dados ---
 db_manager = PostgreSqlManager()
 
 @st.cache_data(ttl=30)
@@ -107,8 +107,7 @@ def fetch_eventos_from_db(filter_date):
             latitude AS lat,
             horario,
             longitude AS lon,
-            participantes,
-            limite_participantes
+            participantes
         FROM vw_eventos_detalhados
         WHERE data = %s;
     """
@@ -149,68 +148,94 @@ def fetch_event_details(event_id):
         st.error(f"Erro ao procurar detalhes do evento: {e}")
         return None
 
+@st.cache_data(ttl=15)
+def fetch_event_comments(event_id):
+    """Busca os comentários de um evento, juntando o nome do autor."""
+    query = """
+        SELECT
+            c.texto,
+            u.nome AS autor
+        FROM comentario c
+        JOIN usuario u ON c.idusuario = u.cpf
+        WHERE c.idevento = %s
+        ORDER BY c.id_comentario ASC;
+    """
+    try:
+        comments_df = db_manager.execute_query(query, params=(event_id,))
+        return comments_df.to_dict('records')
+    except Exception as e:
+        st.error(f"Erro ao carregar comentários: {e}")
+        return []
+
 @st.dialog("Detalhes do Evento")
 def show_event_dialog(event_details, event_id):
     """Exibe os detalhes de um evento num diálogo nativo do Streamlit."""
+    # Verifica se o usuário atual é o criador do evento
     is_owner = event_details['idusuario'] == user_info['cpf']
 
+    # Define as abas a serem exibidas
+    tab_titles = ["Informações", "Comentários"]
     if is_owner:
-        tab_info, tab_edit = st.tabs(["Informações", "Gerenciar Evento"])
-    else:
-        tab_info = st.container()
-        tab_edit = None
-
+        tab_titles.append("Gerenciar Evento")
+    
+    tabs = st.tabs(tab_titles)
+    tab_info = tabs[0]
+    tab_comments = tabs[1]
+    tab_edit = tabs[2] if is_owner else None
+    
     with tab_info:
         st.subheader(event_details['titulo'])
-        # A usar dados trazidos da nova View do SQL
         st.write(f"**Organizador(a):** {event_details['nome_organizador']}")
         st.write(f"**Descrição:** {event_details['descricao']}")
         st.write(f"**Ponto de Referência:** {event_details['referencia']}")
         st.write(f"**Categoria:** {event_details['categoria_nome']}")
+        st.write(f"**Público-Alvo:** {event_details['publico_alvo_nome']}")
         st.write(f"**Data:** {event_details['data'].strftime('%d/%m/%Y')} às {event_details['horario'].strftime('%H:%M')}")
         
-        # --- Lógica do Limite de Participantes e Inscrição ---
-        participantes_atuais = event_details['participantes']
-        limite = event_details['limite_participantes']
-        st.markdown(f"**Vagas Ocupadas:** `{participantes_atuais}` de `{limite}`")
-        st.progress(min(participantes_atuais / limite, 1.0))
+        if st.button("Participar", use_container_width=True):
+            try:
+                # Verifica se o utilizador já participa
+                check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
+                already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], event_id)).empty
 
-        check_query = "SELECT 1 FROM participacao WHERE idusuario = %s AND idevento = %s"
-        already_participating = not db_manager.execute_query(check_query, params=(user_info['cpf'], event_id)).empty
-
-        if already_participating:
-            st.success("✅ A sua presença está confirmada neste evento!")
-            # Criador não pode abandonar o próprio evento, só outros utilizadores
-            if not is_owner:
-                if st.button("Cancelar Inscrição", use_container_width=True):
-                    try:
-                        conn = db_manager.connect_to_db()
-                        cursor = conn.cursor()
-                        cursor.execute("DELETE FROM participacao WHERE idusuario = %s AND idevento = %s", (user_info['cpf'], event_id))
-                        conn.commit()
-                        cursor.close()
-                        conn.close()
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao sair do evento: {e}")
-        elif participantes_atuais >= limite:
-            st.error("🚨 O evento encontra-se lotado!")
-            st.button("Participar", disabled=True, use_container_width=True)
-        else:
-            if st.button("Participar", use_container_width=True):
-                try:
+                if already_participating:
+                    st.warning(f"Já está a participar de '{event_details['titulo']}'.")
+                else:
                     participacao_df = pd.DataFrame([{
                         "idusuario": user_info['cpf'],
                         "idevento": event_id,
                         "data_inscricao": datetime.now().date()
                     }])
                     db_manager.insert_data_into_table(participacao_df, "participacao")
-                    st.success(f"Presença confirmada!")
-                    st.cache_data.clear() 
-                    st.rerun()
-                except psycopg2.Error as e:
-                    st.error(f"Erro ao registar participação: {e}")
+                    st.success(f"Presença confirmada em '{event_details['titulo']}'!")
+                    st.cache_data.clear() # Limpa a cache para forçar a releitura dos dados
+            except psycopg2.Error as e:
+                st.error(f"Erro ao registar participação: {e}")
+
+    with tab_comments:
+        st.subheader("💬 Comentários")
+        comments = fetch_event_comments(event_id)
+        
+        # Área para exibir comentários existentes
+        with st.container(height=200):
+            if not comments:
+                st.info("Ainda não há comentários. Seja o primeiro a comentar!")
+            for comment in comments:
+                st.markdown(f"**{comment['autor'].split()[0]}:** {comment['texto']}")
+        
+        st.divider()
+
+        # Área para adicionar um novo comentário
+        new_comment = st.text_area("Deixe seu comentário:", key=f"comment_input_{event_id}")
+        if st.button("Comentar", key=f"comment_btn_{event_id}", use_container_width=True):
+            if new_comment:
+                comment_df = pd.DataFrame([{"idusuario": user_info['cpf'], "idevento": event_id, "texto": new_comment}])
+                db_manager.insert_data_into_table(comment_df, "comentario")
+                st.success("Comentário adicionado!")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.warning("Escreva algo para comentar.")
 
     if tab_edit:
         with tab_edit:
@@ -239,36 +264,30 @@ def show_event_dialog(event_details, event_id):
                 with col3: edit_cat = st.selectbox("Categoria", options=list(categorias_map.keys()), index=cat_index)
                 with col4: edit_pub = st.selectbox("Público-Alvo", options=list(publicos_map.keys()), index=pub_index)
 
-                # Novo campo para atualizar capacidade
-                edit_capacidade = st.number_input("Limite de Participantes", min_value=1, max_value=5000, value=event_details['limite_participantes'])
-
                 btn_salvar = st.form_submit_button("Salvar Alterações", use_container_width=True)
                 
                 if btn_salvar:
-                    if edit_capacidade < event_details['participantes']:
-                        st.error("O limite não pode ser menor que o número atual de participantes inscritos.")
-                    else:
-                        update_data = {
-                            "titulo": edit_titulo,
-                            "descricao": edit_desc,
-                            "data": edit_data,
-                            "horario": edit_horario,
-                            "idcategoria": categorias_map[edit_cat],
-                            "idpublico_alvo": publicos_map[edit_pub],
-                            "limite_participantes": edit_capacidade
-                        }
-                        try:
-                            db_manager.update_table("evento", update_data, "id_evento = %s", (event_id,))
-                            st.success("Evento atualizado com sucesso!")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except psycopg2.Error as e:
-                            st.error(f"Erro ao atualizar o evento: {e}")
+                    update_data = {
+                        "titulo": edit_titulo,
+                        "descricao": edit_desc,
+                        "data": edit_data,
+                        "horario": edit_horario,
+                        "idcategoria": categorias_map[edit_cat],
+                        "idpublico_alvo": publicos_map[edit_pub]
+                    }
+                    try:
+                        db_manager.update_table("evento", update_data, "id_evento = %s", (event_id,))
+                        st.success("Evento atualizado com sucesso!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except psycopg2.Error as e:
+                        st.error(f"Erro ao atualizar o evento: {e}")
 
             st.divider()
-            st.subheader("Exclusão de Evento")
+            st.subheader("Exclusão de evento")
             if st.button("🚨 Excluir Evento", use_container_width=True):
                 try:
+                    # Precisamos apagar as dependências PRIMEIRO devido às Foreign Keys
                     db_manager.execute_non_query("DELETE FROM participacao WHERE idevento = %s", (event_id,))
                     db_manager.execute_non_query("DELETE FROM comentario WHERE idevento = %s", (event_id,))
                     db_manager.delete_rows_by_condition("evento", "id_evento", event_id)
@@ -309,34 +328,47 @@ if st.session_state.view_mode == "mapa":
         if ev["categoria"] == "HH": cor = "orange"
         elif ev["categoria"] == "Esporte": cor = "green"
         elif ev["categoria"] == "Game": cor = "purple"
-        
-        if ev["participantes"] >= ev["limite_participantes"]: 
-            cor = "red" # Fica vermelho se lotar!
 
         folium.Marker(
             [ev["lat"], ev["lon"]],
-            tooltip=ev["titulo"] + (" (LOTADO)" if ev["participantes"] >= ev["limite_participantes"] else ""),
+            tooltip=ev["titulo"],
             icon=folium.Icon(color=cor, icon="info-sign")
         ).add_to(m)
 
     mapa_interativo = st_folium(m, width="100%", height=500, key="unb_map")
 
-    clicked_marker_coords = mapa_interativo.get("last_object_clicked")
+    current_click = mapa_interativo.get("last_object_clicked")
 
-    if clicked_marker_coords:
-        clicked_lat, clicked_lon = clicked_marker_coords['lat'], clicked_marker_coords['lng']
+    # Verifica se houve um clique NOVO e se ele é diferente do último que já processamos
+    if current_click and current_click != st.session_state.last_processed_click:
+        # Armazena o clique atual para que não seja processado novamente em um rerun
+        st.session_state.last_processed_click = current_click
+        
+        clicked_lat, clicked_lon = current_click['lat'], current_click['lng']
         selected_event = next((ev for ev in eventos if ev['lat'] == clicked_lat and ev['lon'] == clicked_lon), None)
         if selected_event:
-            event_details = fetch_event_details(selected_event['id_evento'])
-            if event_details:
-                show_event_dialog(event_details, selected_event['id_evento'])
+            # Define o ID do evento para ser exibido
+            st.session_state.show_event_dialog_id = selected_event['id_evento']
 
+    # Mostra o diálogo se um ID de evento estiver definido no estado da sessão
+    if st.session_state.show_event_dialog_id:
+        event_details = fetch_event_details(st.session_state.show_event_dialog_id)
+        if event_details:
+            show_event_dialog(event_details, st.session_state.show_event_dialog_id)
+        st.session_state.show_event_dialog_id = None # Limpa o ID para que o diálogo não reabra sozinho
+    
     st.divider()
 
     # --- Painel de Ações (Criar Evento ou Instruções) ---
     coordenadas_clicadas = mapa_interativo.get("last_clicked")
 
+    # 1. Detecta um novo clique no mapa e define a flag para rolar a página
+    if coordenadas_clicadas and coordenadas_clicadas != st.session_state.get("last_map_create_click"):
+        st.session_state.last_map_create_click = coordenadas_clicadas
+        st.session_state.scroll_to_form = True
+
     if coordenadas_clicadas:
+        st.markdown("<div id='create-event-form-anchor'></div>", unsafe_allow_html=True)
         st.subheader("✨ Criar Novo Evento")
         st.info(f"Local selecionado: Lat: {coordenadas_clicadas['lat']:.4f} | Lon: {coordenadas_clicadas['lng']:.4f}")
         with st.form("form_novo_evento", clear_on_submit=True):
@@ -345,44 +377,49 @@ if st.session_state.view_mode == "mapa":
             novo_titulo = st.text_input("Nome do Evento", placeholder="Ex: Grupo de Estudos de BD")
             nova_desc = st.text_area("Descrição", placeholder="Detalhes sobre o evento...")
             nova_referencia = st.text_input("Ponto de Referência", placeholder="Ex: Em frente à entrada da BCE")
-            
             col_data, col_hora = st.columns(2)
             with col_data: nova_data = st.date_input("Data do Evento", min_value=datetime.now().date())
             with col_hora: novo_horario = st.time_input("Horário do Evento")
-            
-            col_cat, col_pub = st.columns(2)
-            with col_cat: nova_cat_nome = st.selectbox("Categoria", options=categorias_map.keys())
-            with col_pub: novo_publico_nome = st.selectbox("Público-Alvo", options=publicos_map.keys())
-            
-            # Adicionando o campo Limite de Vagas ao formulário
-            nova_capacidade = st.number_input("Limite de Participantes (Vagas)", min_value=1, max_value=5000, value=20, help="Quantas pessoas podem participar deste evento?")
-
+            nova_cat_nome = st.selectbox("Categoria", options=categorias_map.keys())
+            novo_publico_nome = st.selectbox("Público-Alvo", options=publicos_map.keys())
             botao_salvar = st.form_submit_button("Publicar no Campus", use_container_width=True)
             
             if botao_salvar:
                 if all([novo_titulo, nova_desc, nova_referencia, nova_data, novo_horario, nova_cat_nome, novo_publico_nome]):
                     try:
                         params = [
-                            str(novo_titulo),
-                            str(nova_desc),
-                            str(nova_referencia),
-                            float(coordenadas_clicadas['lat']),
-                            float(coordenadas_clicadas['lng']),
+                            novo_titulo,
+                            nova_desc,
+                            nova_referencia,
+                            coordenadas_clicadas['lat'],
+                            coordenadas_clicadas['lng'],
                             novo_horario,
                             nova_data,
                             str(user_info['cpf']),
                             int(publicos_map[novo_publico_nome]),
-                            int(categorias_map[nova_cat_nome]),
-                            int(nova_capacidade) # Novo parâmetro exigido pelo backend
+                            int(categorias_map[nova_cat_nome])
                         ]
                         
                         db_manager.call_procedure('create_full_event', params)
-                        st.success("Evento criado com sucesso! O seu utilizador já foi inscrito automaticamente.")
+                        st.success("Evento criado com sucesso! O mapa será atualizado.")
                         st.cache_data.clear(); st.rerun()
                     except psycopg2.Error as e: 
                         st.error(f"Ocorreu um erro ao criar o evento: {e}")
                 else: 
                     st.warning("Por favor, preencha todos os campos do evento.")
+        
+        # 2. Verifica a flag APÓS o formulário ser renderizado
+        if st.session_state.scroll_to_form:
+            # Injeta o JavaScript para rolar até a âncora
+            st.components.v1.html(
+                """
+                <script>
+                    document.getElementById('create-event-form-anchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                </script>
+                """,
+                height=0
+            )
+            st.session_state.scroll_to_form = False # 3. Reseta a flag
     else:
         st.subheader("ℹ️ Como funciona?")
         st.markdown("1. Navegue pelo mapa.\n2. Clique em qualquer local para criar um evento.\n3. Preencha os detalhes do evento.\n4.Clique no ícone de algum evento para ver os detalhes.\n5. Use o botão **'Lista de eventos'** na barra lateral para visualizar fora do mapa.")
@@ -405,8 +442,7 @@ elif st.session_state.view_mode == "lista":
     for ev in eventos:
         col_info, col_btn = st.columns([4, 1])
         with col_info:
-            lotado_tag = "🔴 LOTADO" if ev['participantes'] >= ev['limite_participantes'] else f"`{ev['participantes']}/{ev['limite_participantes']} vagas`"
-            st.markdown(f"**{ev['titulo']}** | 🏷️ *{ev['categoria']}* — {lotado_tag}")
+            st.markdown(f"**{ev['titulo']}** | 🏷️ *{ev['categoria']}* — `{ev['participantes']} participantes`")
         with col_btn:
             if st.button("Detalhes", key=f"btn_details_{ev['id_evento']}", use_container_width=True):
                 event_details = fetch_event_details(ev['id_evento'])
@@ -420,6 +456,7 @@ elif st.session_state.view_mode == "perfil":
     departamentos_map = {row['nome']: row['id_departamento'] for _, row in departamentos_df.iterrows()}
     tipos_usuario_map = {row['nome']: row['id_tipo_usuario'] for _, row in tipos_usuario_df.iterrows()}
     
+    # Inverte os mapas para encontrar o nome a partir do ID
     id_to_departamento = {v: k for k, v in departamentos_map.items()}
     id_to_tipo_usuario = {v: k for k, v in tipos_usuario_map.items()}
 
@@ -427,9 +464,14 @@ elif st.session_state.view_mode == "perfil":
     with st.form("form_update_profile"):
         st.subheader("Dados Pessoais")
 
+        # Campos não editáveis
         st.text_input("CPF", value=user_info.get('cpf'), disabled=True)
         st.date_input("Data de Nascimento", value=user_info.get('data_nasc'), disabled=True)
+
+        # Campo para alterar a foto
         nova_foto = st.file_uploader("Alterar Foto de Perfil (opcional)", type=['png', 'jpg', 'jpeg'])
+
+        # Campos editáveis
         nome = st.text_input("Nome Completo", value=user_info.get('nome'))
         
         dep_atual_nome = id_to_departamento.get(user_info.get('iddepartamento'))
@@ -451,6 +493,7 @@ elif st.session_state.view_mode == "perfil":
                 "idtipo_usuario": tipos_usuario_map[tipo_selecionado_nome]
             }
 
+            # Adiciona a nova foto aos dados de atualização, se uma foi enviada
             if nova_foto:
                 update_data["foto"] = nova_foto.getvalue()
 
@@ -468,8 +511,11 @@ elif st.session_state.view_mode == "perfil":
             try:
                 db_manager.update_table("usuario", update_data, "cpf = %s", (user_info['cpf'],))
                 st.success("Perfil atualizado com sucesso! Será redirecionado para a página de início de sessão.")
+                
+                # Limpa a sessão e redireciona para o login
                 st.session_state.logged_in = False
                 del st.session_state.user_info
                 st.switch_page("pages/login.py")
+
             except psycopg2.Error as e:
                 st.error(f"Ocorreu um erro ao atualizar o perfil: {e}")

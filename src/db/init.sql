@@ -177,7 +177,7 @@ JOIN endereco en ON l.idendereco = en.id_endereco;
 
 
 -- ==========================================
--- PROCEDURES / FUNCTIONS (ATUALIZADA)
+-- PROCEDURES
 -- ==========================================
 
 CREATE OR REPLACE PROCEDURE create_full_event(
@@ -225,10 +225,6 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.data < CURRENT_DATE THEN
         RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para uma data no passado.';
-    END IF;
-
-    IF NEW.data = CURRENT_DATE AND NEW.horario < CURRENT_TIME THEN
-        RAISE EXCEPTION 'Não é possível criar ou atualizar um evento para um horário que já passou hoje.';
     END IF;
 
     RETURN NEW;
